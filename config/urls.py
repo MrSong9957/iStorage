@@ -9,11 +9,11 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     # 首页
-    path('', TemplateView.as_view(template_name='base.html'), name='index'),
+    path('', TemplateView.as_view(template_name='index.html'), name='index'),
     # 首页的别名，用于视图重定向
-    path('', TemplateView.as_view(template_name='base.html'), name='home'),
+    path('', TemplateView.as_view(template_name='index.html'), name='home'),
     # 支持/index路径访问首页
-    path('index', TemplateView.as_view(template_name='base.html'), name='index_alias'),
+    path('index', TemplateView.as_view(template_name='index.html'), name='index_alias'),
     # 管理后台
     path('admin/', admin.site.urls),
     
@@ -27,4 +27,4 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
+

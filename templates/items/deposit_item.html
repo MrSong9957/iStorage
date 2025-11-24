@@ -1,244 +1,152 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>物品录入 - 储物管理系统</title>
-    <!-- 使用Bootstrap并自定义苹果风格 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        /* 苹果设计风格 */
-        :root {
-            --primary-color: #0071e3;
-            --secondary-color: #86868b;
-            --background-color: #f5f5f7;
-            --card-background: #ffffff;
-            --text-color: #1d1d1f;
-            --border-radius: 12px;
-            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        }
+{% extends 'base_template.html' %}
+{% load static %}
+
+{% block title %}物品录入 - iStorage{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-2xl mx-auto my-24">
+    <div class="glass-card rounded-3xl shadow-lg overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center mb-2">
+                <a href="/" class="mr-4 text-blue-500 hover:text-blue-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <h1 class="text-2xl font-semibold text-gray-900">物品录入</h1>
+            </div>
+            <p class="text-sm text-gray-500 mt-1">请输入物品信息并生成标签</p>
+        </div>
         
-        body {
-            background-color: var(--background-color);
-            color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-        }
-        
-        .form-card {
-            background-color: var(--card-background);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            padding: 2rem;
-        }
-        
-        h1 {
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        
-        .form-label {
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            color: var(--text-color);
-        }
-        
-        .form-control {
-            border: 1px solid #d2d2d7;
-            border-radius: 8px;
-            padding: 0.75rem;
-            font-size: 1rem;
-            transition: all 0.2s ease;
-        }
-        
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
-            outline: none;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-primary:hover {
-            background-color: #0066cc;
-            border-color: #0066cc;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .note {
-            background-color: #f8f9fa;
-            border-left: 4px solid var(--primary-color);
-            padding: 0.75rem;
-            margin-bottom: 1.5rem;
-            border-radius: 0 8px 8px 0;
-        }
-        
-        .alert {
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .image-preview {
-            margin-top: 1rem;
-            max-width: 100%;
-            max-height: 200px;
-            border-radius: 8px;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="form-card">
-            <h1>物品录入</h1>
-            
+        <div class="p-6">
             <!-- 显示消息 -->
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
+                    <div class="bg-blue-50 text-blue-700 p-4 rounded-xl mb-6">
                         {{ message }}
                     </div>
                 {% endfor %}
             {% endif %}
             
             <!-- 二选一提示 -->
-            <div class="note">
-                <strong>提示：</strong>请至少提供文字描述或物品图片之一
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl mb-6">
+                <p class="text-sm font-medium text-amber-800">提示：请至少提供物品名称或物品图片之一</p>
             </div>
             
             <!-- 表单 -->
-            <form method="post" enctype="multipart/form-data">
+            <form id="depositForm" method="post" action="{% url 'items:tag_view' %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 
                 <!-- 物品名称 -->
-                <div class="form-group">
-                    <label for="id_name" class="form-label">物品名称</label>
-                    {{ form.name }}
-                    {% if form.name.errors %}
-                        <div class="text-danger">
-                            {% for error in form.name.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <!-- 文字描述 -->
-                <div class="form-group">
-                    <label for="id_description" class="form-label">文字描述</label>
-                    {{ form.description }}
-                    {% if form.description.errors %}
-                        <div class="text-danger">
-                            {% for error in form.description.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                <div class="mb-6">
+                    <label for="id_name" class="block text-sm font-medium text-gray-700 mb-1">物品名称</label>
+                    <input type="text" name="name" id="id_name" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="请输入物品名称">
                 </div>
                 
                 <!-- 物品图片 -->
-                <div class="form-group">
-                    <label for="id_image" class="form-label">物品图片</label>
-                    {{ form.image }}
-                    {% if form.image.errors %}
-                        <div class="text-danger">
-                            {% for error in form.image.errors %}
-                                {{ error }}
-                            {% endfor %}
+                <div class="mb-6">
+                    <label for="id_image" class="block text-sm font-medium text-gray-700 mb-1">物品图片</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer" id="image_upload_area">
+                        <!-- 图片预览容器 -->
+                        <div id="image_preview" class="hidden mb-4">
+                            <img id="preview_img" src="" alt="预览图片" class="max-w-full max-h-40 mx-auto object-contain rounded-lg shadow-sm">
+                            <button type="button" id="remove_image" class="mt-2 text-sm text-blue-500 hover:text-blue-700 transition-colors">移除图片</button>
                         </div>
-                    {% endif %}
+                        
+                        <!-- 默认上传提示 -->
+                        <div id="upload_hint">
+                            <svg class="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-500">点击或拖拽图片到此处上传</p>
+                        </div>
+                        
+                        <input type="file" name="image" id="id_image" accept="image/*" class="hidden">
+                    </div>
                 </div>
                 
-                <!-- 物品种类 -->
-                <div class="form-group">
-                    <label for="id_category" class="form-label">物品种类</label>
-                    {{ form.category }}
-                    {% if form.category.errors %}
-                        <div class="text-danger">
-                            {% for error in form.category.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
+                <!-- 隐藏的其他字段 -->
+                <input type="hidden" name="category" value="others">
+                <input type="hidden" name="value" value="0.0">
+                <input type="hidden" name="location" value="">
+                <input type="hidden" name="notes" value="">
+                <input type="hidden" name="description" value="">
                 
-                <!-- 物品价值 -->
-                <div class="form-group">
-                    <label for="id_value" class="form-label">物品价值</label>
-                    {{ form.value }}
-                    {% if form.value.errors %}
-                        <div class="text-danger">
-                            {% for error in form.value.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <!-- 存放位置 -->
-                <div class="form-group">
-                    <label for="id_location" class="form-label">存放位置</label>
-                    {{ form.location }}
-                    {% if form.location.errors %}
-                        <div class="text-danger">
-                            {% for error in form.location.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <!-- 备注 -->
-                <div class="form-group">
-                    <label for="id_notes" class="form-label">备注</label>
-                    {{ form.notes }}
-                    {% if form.notes.errors %}
-                        <div class="text-danger">
-                            {% for error in form.notes.errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <!-- 提交按钮 -->
-                <div class="text-center">
-                    <button type="submit" class="btn btn-primary">录入物品</button>
+                <!-- 生成标签按钮 -->
+                <div class="flex justify-center">
+                    <button type="submit" id="generateTagBtn" class="apple-btn-primary text-white font-medium px-8 py-3 rounded-xl shadow-sm hover:shadow transition-all">
+                        识别并生成标签
+                    </button>
                 </div>
             </form>
         </div>
     </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 图片上传和预览功能
+    const imageUploadArea = document.getElementById('image_upload_area');
+    const imageInput = document.getElementById('id_image');
+    const imagePreview = document.getElementById('image_preview');
+    const previewImg = document.getElementById('preview_img');
+    const uploadHint = document.getElementById('upload_hint');
+    const removeImageBtn = document.getElementById('remove_image');
+    const depositForm = document.getElementById('depositForm');
     
-    <!-- JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // 简单的表单验证提示
-        document.querySelector('form').addEventListener('submit', function(event) {
-            const description = document.getElementById('id_description').value;
-            const image = document.getElementById('id_image').files.length;
+    // 点击上传区域触发文件选择
+    imageUploadArea.addEventListener('click', () => {
+        imageInput.click();
+    });
+    
+    // 处理文件选择
+    imageInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
             
-            if (!description && !image) {
-                alert('请至少提供文字描述或物品图片之一');
-                event.preventDefault();
+            // 检查文件大小（5MB限制）
+            if (file.size > 5 * 1024 * 1024) {
+                alert('图片大小不能超过5MB');
+                e.target.value = '';
+                return;
             }
-        });
-    </script>
-</body>
-</html>
+            
+            // 检查文件类型
+            if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+                alert('只支持JPG和PNG格式的图片');
+                e.target.value = '';
+                return;
+            }
+            
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+                uploadHint.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // 移除图片
+    removeImageBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        imageInput.value = '';
+        imagePreview.classList.add('hidden');
+        uploadHint.classList.remove('hidden');
+    });
+    
+    // 表单提交验证
+    depositForm.addEventListener('submit', (e) => {
+        const name = document.getElementById('id_name').value.trim();
+        const hasImage = imageInput.files && imageInput.files.length > 0;
+        
+        if (!name && !hasImage) {
+            e.preventDefault();
+            alert('请至少提供物品名称或物品图片之一');
+        }
+    });
+</script>
+{% endblock %}

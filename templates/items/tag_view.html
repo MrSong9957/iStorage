@@ -1,0 +1,247 @@
+{% extends 'base_template.html' %}
+
+{% block title %}物品标签 - iStorage{% endblock %}
+
+{% block content %}
+<div class="container mx-auto my-4">
+    <div class="max-w-md mx-auto glass-card p-4 rounded-xl shadow-lg">
+        <!-- 移除标题 -->
+        
+        <!-- 打印成功提示将通过JavaScript动态创建 -->
+        
+        <!-- 标签展示区域 - 减小内边距 -->
+        <div id="tag-display" class="border border-gray-200 rounded-lg py-2 px-0 mb-2 bg-white">
+            <div class="text-center">
+                <!-- 物品名称 -->
+                <h2 class="text-2xl font-bold mb-1">{{ name }}</h2>
+                
+                <!-- 物品编号 -->
+                <div class="text-gray-600 mb-2">{{ item_code }}</div>
+                
+                <!-- 二维码 -->
+                <div class="flex justify-center">
+                    <img src="data:image/png;base64,{{ qr_code }}" alt="物品二维码" class="max-w-36 max-h-36">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="space-y-2">
+            <button id="print-button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+                打印标签
+            </button>
+            <div class="flex space-x-2">
+                <button id="back-button" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+                    返回录入
+                </button>
+                <button id="input-button" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+                    录入标签
+                </button>
+            </div>
+            <p class="text-center text-xs text-blue-500 mt-1">提示：无需打印标签时，可直接点击录入标签</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 打印标签功能
+    document.getElementById('print-button').addEventListener('click', function() {
+        window.print();
+        
+        // 打印后直接在当前页面显示成功提示，不刷新页面
+        setTimeout(function() {
+            // 检查是否已存在成功提示元素
+            let alertElement = document.getElementById('print-success-alert');
+            
+            if (!alertElement) {
+                // 创建成功提示元素
+                alertElement = document.createElement('div');
+                alertElement.id = 'print-success-alert';
+                alertElement.className = 'bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-2 text-center animate-fade-in';
+                alertElement.innerHTML = '<strong class="font-bold">打印成功！</strong>';
+                
+                // 插入到标签显示区域上方
+                const tagDisplay = document.getElementById('tag-display');
+                if (tagDisplay) {
+                    tagDisplay.parentNode.insertBefore(alertElement, tagDisplay);
+                }
+            } else {
+                // 如果已存在则显示它
+                alertElement.style.display = 'block';
+            }
+            
+            // 3秒后自动隐藏提示
+            setTimeout(function() {
+                if (alertElement) {
+                    alertElement.style.display = 'none';
+                }
+            }, 3000);
+        }, 500);
+    });
+    
+    // 返回录入页面
+    document.getElementById('back-button').addEventListener('click', function() {
+        window.location.href = '{% url "items:item_create" %}';
+    });
+    
+    // 录入标签按钮
+        document.getElementById('input-button').addEventListener('click', function() {
+            // 获取标签信息
+            const name = '{{ name|escapejs }}';
+            const itemCode = '{{ item_code|escapejs }}';
+            
+            // 显示加载状态
+            const button = this;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '录入中...';
+            
+            // 发送AJAX请求
+            fetch('{% url "items:tag_view" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: new URLSearchParams({
+                    'action': 'save_tag',
+                    'name': name,
+                    'item_code': itemCode
+                })
+            })
+            .then(response => {
+                return response.json().then(data => {
+                    if (!response.ok) {
+                        throw new Error(data.message || '服务器错误');
+                    }
+                    return data;
+                });
+            })
+            .then(data => {
+                // 恢复按钮状态
+                button.disabled = false;
+                button.textContent = originalText;
+                
+                // 检查是否已存在提示元素
+                let alertElement = document.getElementById('save-success-alert');
+                
+                if (!alertElement) {
+                    // 创建提示元素
+                    alertElement = document.createElement('div');
+                    alertElement.id = 'save-success-alert';
+                }
+                
+                // 处理成功或失败情况
+                if (data.success) {
+                    // 成功时跳转到成功页面
+                    window.location.href = '{% url "items:success" %}';
+                } else {
+                    // 失败时在当前页面显示错误信息
+                    alertElement.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2 text-center';
+                    alertElement.innerHTML = `<strong class="font-bold">录入失败！</strong> ${data.message || '未知错误'}`;
+                    
+                    // 插入到标签显示区域上方
+                    const tagDisplay = document.getElementById('tag-display');
+                    if (tagDisplay && !alertElement.parentNode) {
+                        tagDisplay.parentNode.insertBefore(alertElement, tagDisplay);
+                    }
+                    
+                    // 显示提示
+                    alertElement.style.display = 'block';
+                    
+                    // 3秒后自动隐藏提示
+                    setTimeout(function() {
+                        if (alertElement) {
+                            alertElement.style.display = 'none';
+                        }
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                // 恢复按钮状态
+                button.disabled = false;
+                button.textContent = originalText;
+                
+                console.error('录入标签时出错:', error);
+                
+                // 创建或更新错误提示
+                let alertElement = document.getElementById('save-success-alert');
+                
+                if (!alertElement) {
+                    alertElement = document.createElement('div');
+                    alertElement.id = 'save-success-alert';
+                    const tagDisplay = document.getElementById('tag-display');
+                    if (tagDisplay) {
+                        tagDisplay.parentNode.insertBefore(alertElement, tagDisplay);
+                    }
+                }
+                
+                alertElement.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2 text-center';
+                alertElement.innerHTML = `<strong class="font-bold">录入失败！</strong> ${error.message || '未知错误，请重试。'}`;
+                alertElement.style.display = 'block';
+                
+                // 3秒后自动隐藏提示
+                setTimeout(function() {
+                    if (alertElement) {
+                        alertElement.style.display = 'none';
+                    }
+                }, 3000);
+            });
+    });
+    
+    // 仅打印标签部分
+    window.onbeforeprint = function() {
+        // 隐藏不需要打印的元素
+        const buttons = document.querySelectorAll('button');
+        const alert = document.getElementById('print-success-alert');
+        const container = document.querySelector('.container');
+        const glassCard = document.querySelector('.glass-card');
+        const tagDisplay = document.getElementById('tag-display');
+        const hintText = document.querySelector('.text-xs.text-blue-500');
+        const buttonContainer = document.querySelector('.space-y-2');
+        
+        // 隐藏所有非标签区域元素
+        container.style.maxWidth = '300px';
+        glassCard.style.padding = '0';
+        glassCard.style.boxShadow = 'none';
+        buttonContainer.style.display = 'none';
+        
+        // 确保标签区域内容居中且左右无间距
+        tagDisplay.style.paddingLeft = '0';
+        tagDisplay.style.paddingRight = '0';
+        
+        // 额外保险，确保所有按钮都隐藏
+        buttons.forEach(btn => btn.style.display = 'none');
+        if (alert) alert.style.display = 'none';
+        if (hintText) hintText.style.display = 'none';
+    };
+    
+    window.onafterprint = function() {
+        // 恢复隐藏的元素
+        const buttons = document.querySelectorAll('button');
+        const alert = document.getElementById('print-success-alert');
+        const container = document.querySelector('.container');
+        const glassCard = document.querySelector('.glass-card');
+        const tagDisplay = document.getElementById('tag-display');
+        const hintText = document.querySelector('.text-xs.text-blue-500');
+        const buttonContainer = document.querySelector('.space-y-2');
+        
+        // 恢复样式
+        container.style.maxWidth = '';
+        glassCard.style.padding = '';
+        glassCard.style.boxShadow = '';
+        buttonContainer.style.display = '';
+        
+        // 恢复标签区域样式
+        tagDisplay.style.paddingLeft = '';
+        tagDisplay.style.paddingRight = '';
+        
+        // 恢复所有按钮
+        buttons.forEach(btn => btn.style.display = '');
+        if (alert) alert.style.display = '';
+        if (hintText) hintText.style.display = '';
+    };
+</script>
+{% endblock %}

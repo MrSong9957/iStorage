@@ -3,6 +3,8 @@
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.views.generic import CreateView
+from django.urls import reverse_lazy
 from django.http import JsonResponse
 import qrcode
 from PIL import Image
@@ -62,6 +64,34 @@ def deposit_item(request):
         # 但如果直接访问，返回items:deposit
         return redirect('items:deposit')
 
+class ItemCreateView(CreateView):
+    """
+    基于类的物品录入视图 - 独立页面版本
+    """
+    model = Item
+    fields = ['name', 'description', 'category', 'value', 'location', 'notes', 'image']
+    template_name = 'items/deposit_item.html'
+    success_url = reverse_lazy('items:success')
+    
+    def form_valid(self, form):
+        # 设置用户和生成物品编号
+        item = form.save(commit=False)
+        item.user = self.request.user
+        item.item_code = generate_item_code()
+        return super().form_valid(form)
+    
+    def get_form_kwargs(self):
+        # 移除user参数，因为ItemForm不接受这个参数
+        kwargs = super().get_form_kwargs()
+        return kwargs
+
+@login_required
+def success(request):
+    """
+    物品录入成功页面
+    """
+    return render(request, 'items/success.html')
+
 @login_required
 def generate_tag(request):
     """
@@ -116,3 +146,87 @@ def generate_tag(request):
         'success': False,
         'error': '只支持POST请求'
     })
+
+from .models import Item
+
+@login_required
+def tag_view(request):
+    """
+    标签展示和打印页面视图
+    接收物品信息，展示标签并提供打印功能和标签录入功能
+    """
+    if request.method == 'POST':
+        # 处理标签录入请求
+        if request.POST.get('action') == 'save_tag':
+            # 获取标签信息
+            name = request.POST.get('name', '未命名物品')
+            item_code = request.POST.get('item_code')
+            
+            # 检查物品编号是否已存在
+            if hasattr(Item, 'item_code') and Item.objects.filter(item_code=item_code).exists():
+                return JsonResponse({'success': False, 'message': '该物品编号已存在！'})
+            
+            try:
+                # 创建新物品记录
+                # 根据数据库结构决定是否包含item_code字段
+                item_data = {
+                    'name': name,
+                    'location': '待分配',  # 默认位置
+                    'user': request.user
+                }
+                
+                # 只有当数据库中有item_code字段时才添加该字段
+                if hasattr(Item, 'item_code'):
+                    item_data['item_code'] = item_code
+                
+                new_item = Item.objects.create(**item_data)
+                return JsonResponse({'success': True, 'message': '标签录入成功！'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': str(e)})
+        
+        # 原有的标签展示逻辑
+        # 获取物品信息
+        name = request.POST.get('name', '未命名物品')
+        item_code = request.POST.get('item_code')
+        image = request.FILES.get('image')
+        
+        # 如果没有物品编号，则生成一个新的
+        if not item_code:
+            item_code = generate_item_code()
+        
+        # 生成二维码数据
+        qr_data = json.dumps({
+            'item_code': item_code,
+            'name': name
+        })
+        
+        # 创建二维码
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(qr_data)
+        qr.make(fit=True)
+        
+        # 生成二维码图片
+        qr_image = qr.make_image(fill_color="black", back_color="white")
+        
+        # 将图片转换为base64编码
+        buffer = io.BytesIO()
+        qr_image.save(buffer, format="PNG")
+        qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+        # 准备上下文数据
+        context = {
+            'name': name,
+            'item_code': item_code,
+            'qr_code': qr_base64,
+            'has_image': image is not None
+        }
+        
+        return render(request, 'items/tag_view.html', context)
+    
+    # GET请求重定向到物品录入页面
+    return redirect('items:item_create')

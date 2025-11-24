@@ -9,7 +9,7 @@ from django.utils import timezone
 class Item(models.Model):
     """物品模型"""
     # 物品编号（前缀+时间戳+随机数）
-    item_code = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='物品编号')
+    item_code = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name='物品编号')
     
     # 物品名称
     name = models.CharField(max_length=200, verbose_name='物品名称')
