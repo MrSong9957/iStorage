@@ -16,11 +16,12 @@ storage/
 │   │   ├── __init__.py
 │   │   ├── __pycache__/
 │   │   ├── apps.py          # 应用配置
+│   │   ├── admin.py         # 后台管理配置
 │   │   ├── forms.py         # 表单定义
 │   │   ├── migrations/      # 数据库迁移
-│   │   ├── models.py        # 数据模型
+│   │   ├── models.py        # 数据模型（包含物品和储物格模型）
 │   │   ├── urls.py          # 模块路由
-│   │   └── views.py         # 视图函数
+│   │   └── views.py         # 视图函数（包含物品和储物格管理功能）
 │   └── users/               # 用户模块
 │       ├── __init__.py
 │       ├── __pycache__/
@@ -61,10 +62,14 @@ storage/
     ├── index.html            # 首页/基础模板
     ├── base_template.html   # 扩展模板
     ├── items/               # 物品模块模板
+    │   ├── associate_item_storage.html  # 物品与储物格关联页面（新增）
+    │   ├── base.html         # 基础模板文件（新增）
     │   ├── deposit_item.html
     │   ├── deposit_item_modal.html
+    │   ├── deposit_storage.html  # 储物格录入页面
     │   ├── tag_view.html     # 物品标签展示和打印页面（新增）
-    │   └── success.html      # 物品录入成功页面（带倒计时重定向）
+    │   ├── success.html      # 物品录入成功页面（带倒计时重定向）
+    │   └── print_selector.html  # 打印类型选择中间页面（新增）
     └── users/               # 用户模块模板
         ├── login.html       # 登录页面
         └── register.html    # 注册页面

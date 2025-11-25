@@ -11,6 +11,8 @@
         
         <!-- 标签展示区域 - 减小内边距 -->
         <div id="tag-display" class="border border-gray-200 rounded-lg py-2 px-0 mb-2 bg-white">
+        <!-- 隐藏字段，用于存储来源信息 -->
+        <input type="hidden" id="source-info" value="{{ source|default:'item_create' }}">
             <div class="text-center">
                 <!-- 物品名称 -->
                 <h2 class="text-2xl font-bold mb-1">{{ name }}</h2>
@@ -81,9 +83,17 @@
         }, 500);
     });
     
-    // 返回录入页面
+    // 返回录入页面 - 根据来源动态决定
     document.getElementById('back-button').addEventListener('click', function() {
-        window.location.href = '{% url "items:item_create" %}';
+        // 获取来源信息，默认为item_create
+        const source = document.getElementById('source-info').value;
+        
+        // 根据来源决定返回链接
+        if (source === 'deposit_storage') {
+            window.location.href = '{% url "items:deposit_storage" %}';
+        } else {
+            window.location.href = '{% url "items:item_create" %}';
+        }
     });
     
     // 录入标签按钮

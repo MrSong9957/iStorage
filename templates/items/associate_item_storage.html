@@ -1,0 +1,313 @@
+{% extends 'items/base.html' %}
+
+{% block title %}关联物品和储物格 - 物品管理系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card mt-5">
+        <div class="card-header text-center">
+            <h2>关联物品和储物格</h2>
+        </div>
+        <div class="card-body">
+            <div class="text-center mb-4">
+                <p>请扫描物品和储物格的二维码，建立关联关系</p>
+                <p id="status-message" class="text-info">准备就绪</p>
+            </div>
+            
+            <!-- 扫描区域 -->
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="qr-scanner-container">
+                        <!-- 视频流容器 -->
+                        <video id="qr-video" class="w-100 rounded border border-secondary"></video>
+                        
+                        <!-- 扫描框指示器 -->
+                        <div id="qr-box-indicator" class="qr-box-indicator"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-md-6 text-center">
+                    <button id="start-scan" class="btn btn-primary mr-2">开始扫描</button>
+                    <button id="stop-scan" class="btn btn-secondary mr-2" disabled>停止扫描</button>
+                    <button id="clear-session" class="btn btn-warning">清除状态</button>
+                </div>
+            </div>
+            
+            <!-- 扫描历史记录 -->
+            <div class="mt-5">
+                <h5>扫描历史</h5>
+                <div id="scan-history" class="list-group"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.qr-scanner-container {
+    position: relative;
+    display: inline-block;
+}
+
+.qr-box-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    border: 2px solid #28a745;
+    border-radius: 8px;
+    pointer-events: none;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.qr-box-indicator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 4px;
+    background: #28a745;
+}
+
+.qr-box-indicator::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 4px;
+    background: #28a745;
+}
+
+#qr-video {
+    height: auto;
+    max-height: 400px;
+}
+
+.list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const video = document.getElementById('qr-video');
+        const statusMessage = document.getElementById('status-message');
+        const startScanBtn = document.getElementById('start-scan');
+        const stopScanBtn = document.getElementById('stop-scan');
+        const clearSessionBtn = document.getElementById('clear-session');
+        const scanHistory = document.getElementById('scan-history');
+        
+        let scanning = false;
+        let stream = null;
+        
+        // 启动摄像头
+        async function startScanner() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment' // 使用后置摄像头
+                    }
+                });
+                
+                video.srcObject = stream;
+                video.play();
+                scanning = true;
+                startScanBtn.disabled = true;
+                stopScanBtn.disabled = false;
+                statusMessage.textContent = '扫描中，请将二维码对准扫描框...';
+                statusMessage.className = 'text-primary';
+                
+                // 开始扫描
+                requestAnimationFrame(tick);
+            } catch (err) {
+                console.error('摄像头访问失败:', err);
+                statusMessage.textContent = '无法访问摄像头，请确保已授予权限';
+                statusMessage.className = 'text-danger';
+            }
+        }
+        
+        // 停止扫描
+        function stopScanner() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            video.srcObject = null;
+            scanning = false;
+            startScanBtn.disabled = false;
+            stopScanBtn.disabled = true;
+            statusMessage.textContent = '已停止扫描';
+            statusMessage.className = 'text-muted';
+        }
+        
+        // 清除关联状态
+        function clearSession() {
+            fetch('{% url "items:clear_association" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusMessage.textContent = '已清除关联状态';
+                    statusMessage.className = 'text-success';
+                    scanHistory.innerHTML = '';
+                }
+            })
+            .catch(error => {
+                console.error('清除会话失败:', error);
+            });
+        }
+        
+        // 处理扫描到的二维码数据
+        function handleQRCode(data) {
+            // 发送数据到服务器进行处理
+            fetch('{% url "items:associate_item_storage" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ qr_data: data })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    statusMessage.textContent = result.message;
+                    statusMessage.className = 'text-success';
+                    
+                    // 添加到扫描历史
+                    addToScanHistory(result.message, 'success');
+                    
+                    // 如果关联完成，可以短暂停止扫描
+                    if (result.complete) {
+                        setTimeout(() => {
+                            stopScanner();
+                            setTimeout(() => {
+                                startScanner();
+                            }, 2000);
+                        }, 1500);
+                    }
+                } else {
+                    statusMessage.textContent = result.message;
+                    statusMessage.className = 'text-danger';
+                    addToScanHistory(result.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('处理二维码数据失败:', error);
+                statusMessage.textContent = '处理失败，请重试';
+                statusMessage.className = 'text-danger';
+            });
+        }
+        
+        // 添加到扫描历史
+        function addToScanHistory(message, type) {
+            const item = document.createElement('div');
+            item.className = `list-group-item ${type === 'success' ? 'list-group-item-success' : 'list-group-item-danger'} mb-1`;
+            
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'text-muted small';
+            const now = new Date();
+            timeSpan.textContent = now.toLocaleTimeString();
+            
+            item.textContent = message;
+            item.appendChild(timeSpan);
+            
+            scanHistory.insertBefore(item, scanHistory.firstChild);
+            
+            // 限制历史记录数量
+            if (scanHistory.children.length > 10) {
+                scanHistory.removeChild(scanHistory.lastChild);
+            }
+        }
+        
+        // 扫描循环
+        function tick() {
+            if (!scanning) return;
+            
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                const canvasElement = document.createElement('canvas');
+                const canvas = canvasElement.getContext('2d');
+                
+                // 调整canvas大小以匹配视频
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                
+                // 绘制视频帧到canvas
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                
+                // 获取图像数据
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                
+                // 尝试解码二维码
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+                
+                if (code) {
+                    // 停止当前扫描周期
+                    scanning = false;
+                    
+                    try {
+                        // 尝试解析JSON数据
+                        const qrData = JSON.parse(code.data);
+                        if (qrData.code && (qrData.category === 'item' || qrData.category === 'storage')) {
+                            handleQRCode(code.data);
+                        } else {
+                            statusMessage.textContent = '无效的二维码格式';
+                            statusMessage.className = 'text-warning';
+                            addToScanHistory('无效的二维码格式', 'error');
+                        }
+                    } catch (e) {
+                        statusMessage.textContent = '二维码内容格式错误';
+                        statusMessage.className = 'text-warning';
+                        addToScanHistory('二维码内容格式错误', 'error');
+                    }
+                    
+                    // 短暂暂停后继续扫描
+                    setTimeout(() => {
+                        scanning = true;
+                        requestAnimationFrame(tick);
+                    }, 2000);
+                } else {
+                    requestAnimationFrame(tick);
+                }
+            } else {
+                requestAnimationFrame(tick);
+            }
+        }
+        
+        // 事件监听
+        startScanBtn.addEventListener('click', startScanner);
+        stopScanBtn.addEventListener('click', stopScanner);
+        clearSessionBtn.addEventListener('click', clearSession);
+        
+        // 窗口关闭时停止摄像头
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    });
+</script>
+{% endblock %}
