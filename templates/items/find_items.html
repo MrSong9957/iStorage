@@ -1,0 +1,689 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查找物品 - iStorage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="{% static 'js/qrcode.min.js' %}"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #F5F5F7; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .apple-btn-primary {
+            background-color: #007AFF;
+            transition: all 0.2s ease;
+        }
+        .apple-btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            border-color: #007AFF;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 200ms, transform 200ms;
+        }
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 200ms, transform 200ms;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6">
+
+    <nav class="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-center z-50">
+        <div class="flex items-center gap-2">
+            <div class="w-6 h-6 bg-black rounded-md"></div> <span class="font-semibold text-gray-900 text-lg">iStorage</span>
+        </div>
+    </nav>
+
+    <main class="w-full max-w-4xl mt-16">
+        
+        <div class="relative flex items-center justify-center mb-8">
+            <a href="/" class="absolute left-0 flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>返回首页</span>
+            </a>
+            <h1 class="text-3xl font-semibold text-gray-900">
+                查找物品
+            </h1>
+        </div>
+
+        <!-- 搜索框模块 -->
+        <div class="bg-white rounded-3xl p-6 mb-8 shadow-sm">
+            <form method="get" action="{% url 'items:find_items' %}" class="flex gap-4">
+                <input 
+                    type="text" 
+                    name="q" 
+                    placeholder="搜索物品名称、编号、描述、位置或种类..." 
+                    value="{{ search_query }}"
+                    class="flex-1 px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                >
+                <button 
+                    type="submit" 
+                    class="apple-btn-primary text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300"
+                >
+                    搜索
+                </button>
+            </form>
+        </div>
+
+        <!-- 搜索结果模块 -->
+        {% if search_query %}
+        <div class="bg-white rounded-3xl p-6 mb-8 shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">
+                搜索结果 <span class="text-sm font-normal text-gray-500">({{ items.count }} 项)</span>
+            </h2>
+            {% if items %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for item in items %}
+                <div 
+                    class="bg-gray-50 rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition-all duration-300 cursor-pointer item-card"
+                    data-item-id="{{ item.id }}"
+                    data-item-name="{{ item.name }}"
+                    data-item-code="{{ item.item_code }}"
+                    data-item-category="{{ item.get_category_display }}"
+                    data-item-location="{{ item.location }}"
+                    data-item-description="{{ item.description|default:'' }}"
+                    data-item-image="{% if item.image %}{{ item.image.url }}{% else %}{% endif %}"
+                    data-item-storage-time="{{ item.storage_time|date:'Y-m-d H:i' }}"
+                    data-item-qr-code="{{ item.qr_code }}"
+                >
+                    {% if item.image %}
+                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-12 h-12 object-cover rounded-full">
+                    {% else %}
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    {% endif %}
+                    <div class="flex-1 min-w-0">
+                        <span class="text-sm font-medium text-gray-900 truncate">{{ item.name }}</span>
+                        <p class="text-xs text-gray-500 truncate mt-1">{{ item.item_code }}</p>
+                        {% if item.location %}
+                        <p class="text-xs text-blue-600 truncate mt-1">{{ item.location }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <p>未找到匹配的物品</p>
+                <p class="text-sm mt-1">请尝试使用其他关键词搜索</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- 最近的物品模块 -->
+        <div class="bg-white rounded-3xl p-6 mb-8 shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">最近的物品</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {% for item in recent_items %}
+                <div 
+                    class="bg-gray-50 rounded-2xl p-4 flex flex-col items-center text-center hover:shadow-md transition-all duration-300 cursor-pointer item-card"
+                    data-item-id="{{ item.id }}"
+                    data-item-name="{{ item.name }}"
+                    data-item-code="{{ item.item_code }}"
+                    data-item-category="{{ item.get_category_display }}"
+                    data-item-location="{{ item.location }}"
+                    data-item-description="{{ item.description|default:'' }}"
+                    data-item-image="{% if item.image %}{{ item.image.url }}{% else %}{% endif %}"
+                    data-item-storage-time="{{ item.storage_time|date:'Y-m-d H:i' }}"
+                    data-item-qr-code="{{ item.qr_code }}"
+                >
+                    {% if item.image %}
+                    <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-16 h-16 object-cover rounded-full mb-2">
+                    {% else %}
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-2">
+                        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    {% endif %}
+                    <span class="text-sm font-medium text-gray-900 truncate w-full">{{ item.name }}</span>
+                </div>
+                {% empty %}
+                <div class="col-span-full text-center py-8 text-gray-500">
+                    暂无最近物品
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 分类物品模块 -->
+        <div class="bg-white rounded-3xl p-6 mb-8 shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">分类物品</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for category, items in category_items.items %}
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-3">{{ category }}</h3>
+                    <div class="space-y-3">
+                        {% for item in items %}
+                        <div 
+                            class="bg-gray-50 rounded-2xl p-3 flex items-center gap-3 hover:shadow-sm transition-all duration-300 cursor-pointer item-card"
+                            data-item-id="{{ item.id }}"
+                            data-item-name="{{ item.name }}"
+                            data-item-code="{{ item.item_code }}"
+                            data-item-category="{{ item.get_category_display }}"
+                            data-item-location="{{ item.location }}"
+                            data-item-description="{{ item.description|default:'' }}"
+                            data-item-image="{% if item.image %}{{ item.image.url }}{% else %}{% endif %}"
+                            data-item-storage-time="{{ item.storage_time|date:'Y-m-d H:i' }}"
+                            data-item-qr-code="{{ item.qr_code }}"
+                        >
+                            {% if item.image %}
+                            <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-10 h-10 object-cover rounded-full">
+                            {% else %}
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            {% endif %}
+                            <div class="flex-1 min-w-0">
+                                <span class="text-sm font-medium text-gray-900 truncate">{{ item.name }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4 text-gray-500 text-sm">
+                            暂无物品
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 储物格模块 -->
+        <div class="bg-white rounded-3xl p-6 mb-8 shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">储物格</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for storage in storages %}
+                <div class="bg-gray-50 rounded-2xl p-4 hover:shadow-md transition-all duration-300">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-medium text-gray-900">{{ storage.name }}</h3>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{{ storage.room }}</span>
+                    </div>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p>家具：{{ storage.furniture }}</p>
+                        <p>储物格：{{ storage.unit }}</p>
+                        <p class="text-xs text-gray-400 mt-2">{{ storage.created_at|date:"Y-m-d H:i" }}</p>
+                    </div>
+                    {% if storage.items.count > 0 %}
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                    <p class="text-xs text-gray-500 mb-2">包含物品：</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for item in storage.items.all|slice:3 %}
+                        <div 
+                            class="text-xs bg-gray-200 text-gray-800 px-2 py-1 rounded-full truncate max-w-[120px] hover:bg-gray-300 cursor-pointer transition-colors item-card"
+                            data-item-id="{{ item.id }}"
+                            data-item-name="{{ item.name }}"
+                            data-item-code="{{ item.item_code }}"
+                            data-item-category="{{ item.get_category_display }}"
+                            data-item-location="{{ item.location }}"
+                            data-item-description="{{ item.description|default:'' }}"
+                            data-item-image="{% if item.image %}{{ item.image.url }}{% else %}{% endif %}"
+                            data-item-storage-time="{{ item.storage_time|date:'Y-m-d H:i' }}"
+                            data-item-qr-code="{{ item.qr_code }}"
+                        >{{ item.name }}</div>
+                        {% endfor %}
+                        {% if storage.items.count > 3 %}
+                        <span class="text-xs bg-gray-200 text-gray-800 px-2 py-1 rounded-full">+{{ storage.items.count|add:-3 }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                </div>
+                {% empty %}
+                <div class="col-span-full text-center py-8 text-gray-500">
+                    暂无储物格
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 物品详情模态窗口 -->
+    <div id="itemModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full mx-4 transform transition-all duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <h2 id="modalItemName" class="text-xl font-semibold text-gray-900"></h2>
+                <div class="flex gap-2">
+                    <button id="deleteItemBtn" class="text-red-500 hover:text-red-700 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                    <button id="closeModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center mb-6">
+                <div id="modalItemImageContainer" class="w-24 h-24 rounded-full overflow-hidden mb-4 bg-blue-100 flex items-center justify-center">
+                    <img id="modalItemImage" src="" alt="" class="w-full h-full object-cover">
+                    <svg id="modalItemIcon" class="w-12 h-12 text-blue-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+                <span id="modalItemCode" class="text-sm text-gray-500"></span>
+            </div>
+            
+            <!-- 二维码显示区域 -->
+            <div class="flex justify-center mb-6">
+                <div id="modalItemQRCode" class="w-48 h-48"></div>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500 mb-1">分类</p>
+                        <select 
+                            id="modalItemCategorySelect" 
+                            class="w-full text-sm font-medium text-gray-900 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        >
+                            <!-- 分类选项将通过JavaScript动态填充 -->
+                        </select>
+                        <input type="hidden" id="currentItemCategory" value="">
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-1">位置</p>
+                        <select 
+                            id="modalItemLocationSelect" 
+                            class="w-full text-sm font-medium text-gray-900 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        >
+                            <!-- 位置选项将通过JavaScript动态填充 -->
+                        </select>
+                        <input type="hidden" id="currentItemLocation" value="">
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button 
+                        id="saveItemDetailsBtn" 
+                        class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors"
+                    >
+                        保存修改
+                    </button>
+                </div>
+                
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">存放时间</p>
+                    <p id="modalItemStorageTime" class="text-sm font-medium text-gray-900"></p>
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <p class="text-xs text-gray-500">描述</p>
+                    </div>
+                    <textarea 
+                        id="modalItemDescription" 
+                        class="w-full text-sm text-gray-700 p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none" 
+                        rows="3" 
+                        placeholder="无描述"></textarea>
+                    <div class="flex justify-end mt-2">
+                        <button id="saveDescriptionBtn" class="text-sm text-white bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition-colors">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 分类和位置数据
+        const categories = {{ categories|safe }};
+        const storages = [
+            {% for storage in storages %}
+            {
+                'id': '{{ storage.id }}',
+                'name': '{{ storage.name }}',
+                'room': '{{ storage.room }}',
+                'furniture': '{{ storage.furniture }}',
+                'unit': '{{ storage.unit }}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        // 获取模态窗口元素
+        const modal = document.getElementById('itemModal');
+        const closeModal = document.getElementById('closeModal');
+        
+        // 获取模态窗口内容元素
+        const modalItemName = document.getElementById('modalItemName');
+        const modalItemCode = document.getElementById('modalItemCode');
+        const modalItemCategorySelect = document.getElementById('modalItemCategorySelect');
+        const modalItemLocationSelect = document.getElementById('modalItemLocationSelect');
+        const currentItemCategory = document.getElementById('currentItemCategory');
+        const currentItemLocation = document.getElementById('currentItemLocation');
+        const modalItemDescription = document.getElementById('modalItemDescription');
+        const modalItemImage = document.getElementById('modalItemImage');
+        const modalItemIcon = document.getElementById('modalItemIcon');
+        const modalItemImageContainer = document.getElementById('modalItemImageContainer');
+        const modalItemQRCode = document.getElementById('modalItemQRCode');
+        const saveDescriptionBtn = document.getElementById('saveDescriptionBtn');
+        const deleteItemBtn = document.getElementById('deleteItemBtn');
+        const saveItemDetailsBtn = document.getElementById('saveItemDetailsBtn');
+        
+        // 用于存储当前物品ID
+        let currentItemId = null;
+        
+
+        
+        // 保存描述的函数
+        async function saveDescription() {
+            const description = modalItemDescription.value;
+            
+            try {
+                const response = await fetch(`/items/save_description/${currentItemId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ description })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // 更新成功，可以添加提示
+                    console.log('描述保存成功');
+                } else {
+                    console.error('描述保存失败:', data.message);
+                }
+            } catch (error) {
+                console.error('保存描述时出错:', error);
+            }
+        }
+        
+        // 获取CSRF Token的函数
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // 获取所有物品卡片
+        const itemCards = document.querySelectorAll('.item-card');
+        
+        // 填充分类下拉菜单
+        function populateCategorySelect() {
+            // 清空现有选项
+            modalItemCategorySelect.innerHTML = '';
+            
+            // 添加默认选项
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '请选择分类';
+            defaultOption.disabled = true;
+            defaultOption.hidden = true;
+            modalItemCategorySelect.appendChild(defaultOption);
+            
+            // 添加分类选项
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category[0];
+                option.textContent = category[1];
+                modalItemCategorySelect.appendChild(option);
+            });
+        }
+        
+        // 填充位置下拉菜单
+        function populateLocationSelect() {
+            // 清空现有选项
+            modalItemLocationSelect.innerHTML = '';
+            
+            // 添加默认选项
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '请选择位置';
+            defaultOption.disabled = true;
+            defaultOption.hidden = true;
+            modalItemLocationSelect.appendChild(defaultOption);
+            
+            // 添加位置选项
+            storages.forEach(storage => {
+                const option = document.createElement('option');
+                option.value = storage.name;
+                option.textContent = storage.name;
+                modalItemLocationSelect.appendChild(option);
+            });
+        }
+        
+        // 初始化填充下拉菜单
+        populateCategorySelect();
+        populateLocationSelect();
+        
+        // 为每个物品卡片添加点击事件
+        itemCards.forEach(card => {
+            card.addEventListener('click', () => {
+                // 获取物品数据
+                const itemId = card.dataset.itemId;
+                const itemName = card.dataset.itemName;
+                const itemCode = card.dataset.itemCode;
+                const itemCategory = card.dataset.itemCategory;
+                const itemLocation = card.dataset.itemLocation;
+                const itemDescription = card.dataset.itemDescription;
+                const itemImage = card.dataset.itemImage;
+                const itemStorageTime = card.dataset.itemStorageTime;
+                const itemQRCode = card.dataset.itemQrCode;
+                
+                // 保存当前物品ID
+                currentItemId = itemId;
+                
+                // 设置模态窗口内容
+                modalItemName.textContent = itemName;
+                modalItemCode.textContent = itemCode;
+                
+                // 设置分类下拉菜单
+                modalItemCategorySelect.value = categories.find(cat => cat[1] === itemCategory)?.[0] || '';
+                currentItemCategory.value = modalItemCategorySelect.value;
+                
+                // 设置位置下拉菜单
+                modalItemLocationSelect.value = itemLocation || '';
+                currentItemLocation.value = modalItemLocationSelect.value;
+                
+                modalItemDescription.value = itemDescription || '';
+                modalItemStorageTime.textContent = itemStorageTime;
+                
+                // 设置物品图片或图标
+                if (itemImage) {
+                    modalItemImage.src = itemImage;
+                    modalItemImage.classList.remove('hidden');
+                    modalItemIcon.classList.add('hidden');
+                    modalItemImageContainer.classList.remove('bg-blue-100');
+                } else {
+                    modalItemImage.classList.add('hidden');
+                    modalItemIcon.classList.remove('hidden');
+                    modalItemImageContainer.classList.add('bg-blue-100');
+                }
+                
+                // 显示二维码
+                if (itemQRCode) {
+                    modalItemQRCode.innerHTML = `<img src="data:image/png;base64,${itemQRCode}" alt="二维码" class="w-full h-full object-contain">`;
+                } else {
+                    modalItemQRCode.innerHTML = '<div class="text-center text-gray-500 py-8">无法显示二维码</div>';
+                }
+                
+                // 显示模态窗口
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+        });
+        
+        // 为保存按钮添加点击事件
+        saveDescriptionBtn.addEventListener('click', saveDescription);
+        
+        // 关闭模态窗口
+        closeModal.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+        
+        // 点击模态窗口外部关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+        
+        // 按ESC键关闭模态窗口
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // 删除物品函数
+        async function deleteItem() {
+            if (!currentItemId) return;
+            
+            // 确认提示
+            if (!confirm('确定要删除这个物品吗？此操作不可恢复。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/items/delete/${currentItemId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // 删除成功，关闭模态窗口并刷新页面
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                    window.location.reload();
+                } else {
+                    alert('删除失败：' + data.message);
+                }
+            } catch (error) {
+                console.error('删除物品时出错:', error);
+                alert('删除失败，请稍后重试。');
+            }
+        }
+
+        // 为保存按钮添加点击事件
+        saveDescriptionBtn.addEventListener('click', saveDescription);
+        
+        // 更新物品分类的函数
+        async function updateItemCategory() {
+            const newCategory = modalItemCategorySelect.value;
+            const currentCategory = currentItemCategory.value;
+            
+            if (newCategory === currentCategory || !newCategory) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/items/update_category/${currentItemId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ category: newCategory })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // 更新当前分类值
+                    currentItemCategory.value = newCategory;
+                    // 更新物品卡片的分类数据
+                    const itemCard = document.querySelector(`[data-item-id="${currentItemId}"]`);
+                    if (itemCard) {
+                        itemCard.dataset.itemCategory = data.category;
+                    }
+                    console.log('分类更新成功');
+                } else {
+                    console.error('分类更新失败:', data.message);
+                    alert('分类更新失败：' + data.message);
+                }
+            } catch (error) {
+                console.error('更新分类时出错:', error);
+                alert('更新分类失败，请稍后重试。');
+            }
+        }
+        
+        // 更新物品位置的函数
+        async function updateItemLocation() {
+            const newLocation = modalItemLocationSelect.value;
+            const currentLocation = currentItemLocation.value;
+            
+            if (newLocation === currentLocation || !newLocation) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/items/update_location/${currentItemId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ location: newLocation })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // 更新当前位置值
+                    currentItemLocation.value = newLocation;
+                    // 更新物品卡片的位置数据
+                    const itemCard = document.querySelector(`[data-item-id="${currentItemId}"]`);
+                    if (itemCard) {
+                        itemCard.dataset.itemLocation = data.location;
+                    }
+                    console.log('位置更新成功');
+                } else {
+                    console.error('位置更新失败:', data.message);
+                    alert('位置更新失败：' + data.message);
+                }
+            } catch (error) {
+                console.error('更新位置时出错:', error);
+                alert('更新位置失败，请稍后重试。');
+            }
+        }
+        
+        // 保存物品详情的函数
+        async function saveItemDetails() {
+            await updateItemCategory();
+            await updateItemLocation();
+            // 可以在这里添加其他详情更新逻辑
+            alert('物品详情已保存');
+        }
+        
+        // 为保存详情按钮添加点击事件
+        saveItemDetailsBtn.addEventListener('click', saveItemDetails);
+        
+        // 为删除按钮添加点击事件
+        deleteItemBtn.addEventListener('click', deleteItem);
+    </script>
+</body>
+</html>

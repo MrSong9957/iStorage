@@ -41,7 +41,7 @@ class Storage(models.Model):
 class Item(models.Model):
     """物品模型"""
     # 物品编号（前缀+时间戳+随机数）
-    item_code = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name='物品编号')
+    item_code = models.CharField(max_length=50, unique=True, null=False, blank=False, verbose_name='物品编号')
     
     # 物品名称
     name = models.CharField(max_length=200, verbose_name='物品名称')
@@ -79,6 +79,9 @@ class Item(models.Model):
     
     # 多对多关联到储物格（一个物品可以放在多个储物格，一个储物格可以放多个物品）
     storages = models.ManyToManyField(Storage, related_name='items', blank=True, verbose_name='存放的储物格')
+    
+    # 二维码base64编码
+    qr_code = models.TextField(blank=True, null=True, verbose_name='二维码')
     
     def __str__(self):
         return self.name

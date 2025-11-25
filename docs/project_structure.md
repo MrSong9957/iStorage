@@ -46,6 +46,13 @@ storage/
 │   ├── project_structure.md # 项目结构文档
 │   └── storage_management_requirements.md # 存储管理需求文档
 ├── manage.py                # Django命令行工具
+├── scripts/                 # 测试和辅助脚本
+│   ├── associate_items.py   # 物品关联脚本
+│   ├── check_items.py       # 物品检查脚本
+│   ├── check_qr_codes.py    # 二维码检查脚本
+│   ├── generate_missing_codes.py # 生成缺失物品编号脚本
+│   ├── generate_qr_codes.py # 为现有物品生成二维码的脚本
+│   └── test_qr_fix.py       # 二维码修复测试脚本
 ├── media/                   # 媒体文件目录
 │   └── item_images/         # 物品图片
 │       ├── bootstrap-logo.svg
@@ -56,20 +63,22 @@ storage/
 │   │   ├── tailwind-cdn.min.js  # Tailwind CSS本地JS文件
 │   │   └── tailwind.min.css     # Tailwind CSS本地文件
 │   └── js/                  # JavaScript文件
-│       └── deposit_module.js # 存储模块JavaScript
+│       ├── deposit_module.js # 存储模块JavaScript
+│       └── qrcode.min.js    # 二维码生成库
 ├── storage.log              # 项目日志文件
 └── templates/               # 全局模板
-    ├── index.html            # 首页/基础模板
-    ├── base_template.html   # 扩展模板
-    ├── items/               # 物品模块模板
-    │   ├── associate_item_storage.html  # 物品与储物格关联页面（新增）
-    │   ├── base.html         # 基础模板文件（新增）
-    │   ├── deposit_item.html
-    │   ├── deposit_item_modal.html
-    │   ├── deposit_storage.html  # 储物格录入页面
-    │   ├── tag_view.html     # 物品标签展示和打印页面（新增）
-    │   ├── success.html      # 物品录入成功页面（带倒计时重定向）
-    │   └── print_selector.html  # 打印类型选择中间页面（新增）
-    └── users/               # 用户模块模板
-        ├── login.html       # 登录页面
-        └── register.html    # 注册页面
+        ├── index.html            # 首页/基础模板
+        ├── base_template.html   # 扩展模板
+        ├── items/               # 物品模块模板
+        │   ├── associate_item_storage.html  # 物品与储物格关联页面（新增）
+        │   ├── base.html         # 基础模板文件（新增）
+        │   ├── deposit_item.html
+        │   ├── deposit_item_modal.html
+        │   ├── deposit_storage.html  # 储物格录入页面
+        │   ├── find_items.html   # 查找物品页面（新增）
+        │   ├── tag_view.html     # 物品标签展示和打印页面（新增）
+        │   ├── success.html      # 物品录入成功页面（带倒计时重定向）
+        │   └── print_selector.html  # 打印类型选择中间页面（新增）
+        └── users/               # 用户模块模板
+            ├── login.html       # 登录页面
+            └── register.html    # 注册页面

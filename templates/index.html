@@ -1,79 +1,43 @@
+{% extends 'base_template.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apple Style Prototype</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #F5F5F7; }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        .apple-btn-primary {
-            background-color: #007AFF;
-            transition: all 0.2s ease;
-        }
-        .apple-btn-primary:active { transform: scale(0.98); opacity: 0.9; }
-        .card-hover:hover {
-            transform: translateY(-4px);
-            border-color: #007AFF;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-        }
-    </style>
-</head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6">
 
-    <nav class="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-center z-50">
-        <div class="flex items-center gap-2">
-            <div class="w-6 h-6 bg-black rounded-md"></div> <span class="font-semibold text-gray-900 text-lg">iStorage</span>
-        </div>
-    </nav>
+{% block title %}iStorage{% endblock %}
 
-    <main class="w-full max-w-4xl mt-10">
-        
-        <h1 class="text-center text-3xl font-semibold text-gray-900 mb-12">
-            你好，请选择操作
-        </h1>
+{% block content %}
+    <h1 class="text-center text-3xl font-semibold text-gray-900 mb-12">
+        你好，请选择操作
+    </h1>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <button id="openDepositModal" class="bg-white rounded-3xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer border border-transparent transition-all duration-300 card-hover shadow-sm h-64 w-full">
-                <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                </div>
-                <span class="text-xl font-semibold text-gray-900">存物品</span>
-                <span class="text-sm text-gray-500">扫码存放物品</span>
-            </button>
-
-            <div class="bg-white rounded-3xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer border border-transparent transition-all duration-300 card-hover shadow-sm h-64">
-                <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </div>
-                <span class="text-xl font-semibold text-gray-900">找物品</span>
-                <span class="text-sm text-gray-500">查询物品存放位置</span>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <button id="openDepositModal" class="bg-white rounded-3xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer border border-transparent transition-all duration-300 card-hover shadow-sm h-64 w-full">
+            <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
-        </div>
+            <span class="text-xl font-semibold text-gray-900">存物品</span>
+            <span class="text-sm text-gray-500">扫码存放物品</span>
+        </button>
 
-        <div class="flex justify-center">
-            <a href="/items/print_selector/" class="bg-white rounded-2xl p-6 flex items-center gap-4 cursor-pointer border border-transparent transition-all duration-300 card-hover shadow-sm w-full md:w-1/2">
-                <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-base font-semibold text-gray-900">打印标签</span>
-                    <span class="text-xs text-gray-500">批量打印储物格标签</span>
-                </div>
-            </a>
-        </div>
+        <a href="{% url 'items:find_items' %}" class="bg-white rounded-3xl p-10 flex flex-col items-center justify-center gap-4 cursor-pointer border border-transparent transition-all duration-300 card-hover shadow-sm h-64 w-full">
+            <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <span class="text-xl font-semibold text-gray-900">找物品</span>
+            <span class="text-sm text-gray-500">查询物品存放位置</span>
+        </a>
+    </div>
 
-    </main>
+    <div class="flex justify-center">
+        <a href="/items/print_selector/" class="bg-white rounded-2xl p-6 flex items-center gap-4 cursor-pointer border border-transparent transition-all duration-300 card-hover shadow-sm w-full md:w-1/2">
+            <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-base font-semibold text-gray-900">打印标签</span>
+                <span class="text-xs text-gray-500">批量打印储物格标签</span>
+            </div>
+        </a>
+    </div>
 
     <!-- 添加对独立存物品功能模块的引用 -->
     <script src="{% static 'js/deposit_module.js' %}"></script>
-</body>
-</html>
+{% endblock %}

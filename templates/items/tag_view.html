@@ -118,7 +118,8 @@
                 body: new URLSearchParams({
                     'action': 'save_tag',
                     'name': name,
-                    'item_code': itemCode
+                    'item_code': itemCode,
+                    'category': '{{ category }}'
                 })
             })
             .then(response => {
