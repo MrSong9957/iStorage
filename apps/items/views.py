@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """物品应用视图"""
 
+import logging
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.generic import CreateView
 from django.urls import reverse_lazy
 from django.http import JsonResponse
+from django.db.models import Q
 import qrcode
 from PIL import Image
 import datetime
@@ -13,7 +15,10 @@ import random
 import base64
 import io
 import json
-from .models import Item, Storage, Room, Furniture
+from .models import Item, StorageCell, Room, Furniture
+
+# 创建日志记录器
+logger = logging.getLogger(__name__)
 
 def generate_item_code():
     """
@@ -43,6 +48,9 @@ def deposit_item(request):
         try:
             # 生成唯一的物品编号
             item_code = generate_item_code()
+            
+            # 记录物品录入开始
+            logger.info(f"用户 {request.user.username} 开始录入物品，物品编号: {item_code}")
             
             # 直接创建物品实例
             item = Item(
@@ -85,9 +93,15 @@ def deposit_item(request):
             # 保存二维码到物品
             item.qr_code = qr_base64
             item.save()
+            
+            # 记录物品录入成功
+            logger.info(f"用户 {request.user.username} 物品录入成功，物品ID: {item.id}, 物品编号: {item.item_code}, 物品名称: {item.name}")
+            
             # 物品创建成功，重定向到成功页面
             return redirect('items:success')
         except Exception as e:
+            # 记录物品录入失败
+            logger.error(f"用户 {request.user.username} 物品录入失败，错误信息: {str(e)}")
             # 异常处理，返回原页面并显示错误
             return render(request, 'items/deposit_item.html', {'error': '物品录入失败，请重试'})
     else:
@@ -108,6 +122,9 @@ class ItemCreateView(CreateView):
         item = form.save(commit=False)
         item.user = self.request.user
         item.item_code = generate_item_code()
+        
+        # 记录物品录入开始
+        logger.info(f"用户 {self.request.user.username} 开始录入物品，物品编号: {item.item_code}")
         
         # 生成二维码
         qr_data = json.dumps({
@@ -137,7 +154,13 @@ class ItemCreateView(CreateView):
         # 保存二维码到物品
         item.qr_code = qr_base64
         
-        return super().form_valid(form)
+        # 保存物品
+        response = super().form_valid(form)
+        
+        # 记录物品录入成功
+        logger.info(f"用户 {self.request.user.username} 物品录入成功，物品ID: {item.id}, 物品编号: {item.item_code}, 物品名称: {item.name}")
+        
+        return response
     
     def get_form_kwargs(self):
         # 移除user参数，因为ItemForm不接受这个参数
@@ -230,23 +253,28 @@ def tag_view(request):
                     
                     # 获取或创建Room实例
                     room, _ = Room.objects.get_or_create(
-                        name=room_name,
+                        room_name=room_name,
                         user=request.user
                     )
                     
                     # 获取或创建Furniture实例
                     furniture, _ = Furniture.objects.get_or_create(
-                        name=furniture_name,
+                        furniture_name=furniture_name,
                         user=request.user
                     )
                     
-                    # 创建新储物格记录，不指定storage_code，由save方法自动生成
-                    new_storage = Storage.objects.create(
+                    # 创建新储物格记录
+                    new_storage = StorageCell.objects.create(
                         room=room,
                         furniture=furniture,
                         user=request.user,
-                        qr_code=b''  # 初始化为空字节串，后续会更新
+                        qr_code=b'',  # 初始化为空字节串，后续会更新
+                        cell_number=1  # 初始化为1，实际使用时需要根据同一房间+家具下的最大编号递增
                     )
+                    
+                    # 记录储物格创建成功
+                    logger.info(f"用户 {request.user.username} 储物格标签录入成功，储物格ID: {new_storage.id}, 储物格编号: {new_storage.cell_id}")
+                    
                     return JsonResponse({'success': True, 'message': '储物格标签录入成功！'})
                 else:
                     # 检查物品编号是否已存在
@@ -293,6 +321,9 @@ def tag_view(request):
                     new_item.qr_code = qr_base64
                     new_item.save()
                     
+                    # 记录物品标签录入成功
+                    logger.info(f"用户 {request.user.username} 物品标签录入成功，物品ID: {new_item.id}, 物品编号: {new_item.item_code}, 物品名称: {new_item.name}")
+                    
                     return JsonResponse({'success': True, 'message': '物品标签录入成功！'})
             except Exception as e:
                 return JsonResponse({'success': False, 'message': str(e)})
@@ -312,26 +343,30 @@ def tag_view(request):
             
             # 获取或创建Room实例
             room, _ = Room.objects.get_or_create(
-                name=room_name,
+                room_name=room_name,
                 user=request.user
             )
             
             # 获取或创建Furniture实例
             furniture, _ = Furniture.objects.get_or_create(
-                name=furniture_name,
+                furniture_name=furniture_name,
                 user=request.user
             )
             
-            # 创建储物格记录，由save方法自动生成storage_code
-            storage = Storage.objects.create(
+            # 创建储物格记录
+            storage = StorageCell.objects.create(
                 room=room,
                 furniture=furniture,
                 user=request.user,
-                qr_code=b''  # 初始化为空字节串
+                qr_code=b'',  # 初始化为空字节串
+                cell_number=1  # 初始化为1，实际使用时需要根据同一房间+家具下的最大编号递增
             )
             
-            # 使用生成的storage_code作为item_code
-            item_code = storage.storage_code
+            # 记录储物格创建成功
+            logger.info(f"用户 {request.user.username} 储物格创建成功，储物格ID: {storage.id}, 储物格编号: {storage.cell_id}")
+            
+            # 使用生成的cell_id作为item_code
+            item_code = storage.cell_id
         elif not item_code:
             # 为物品生成编号
             item_code = generate_item_code()
@@ -391,6 +426,9 @@ def associate_item_storage(request):
             code = qr_data.get('code')
             category = qr_data.get('category', 'item')
             
+            # 记录二维码扫描信息
+            logger.info(f"用户 {request.user.username} 扫描二维码，类型: {category}, 编码: {code}")
+            
             # 获取当前会话中的临时数据
             session_data = request.session.get('association_data', {})
             
@@ -398,7 +436,11 @@ def associate_item_storage(request):
                 # 查找物品
                 item = Item.objects.filter(item_code=code, user=request.user).first()
                 if not item:
+                    logger.warning(f"用户 {request.user.username} 扫描物品二维码未找到对应物品，编码: {code}")
                     return JsonResponse({'success': False, 'message': '未找到该物品，请确认标签正确'})
+                
+                # 记录物品识别成功
+                logger.info(f"用户 {request.user.username} 成功识别物品，物品名称: {item.name}, 物品编码: {item.item_code}")
                 
                 # 保存物品信息到会话
                 session_data['item'] = {
@@ -409,18 +451,22 @@ def associate_item_storage(request):
                 # 检查是否已有储物格信息
                 if 'storage' in session_data:
                     # 找到储物格
-                    storage = Storage.objects.filter(storage_code=session_data['storage']['code'], user=request.user).first()
+                    storage = StorageCell.objects.filter(cell_id=session_data['storage']['code'], user=request.user).first()
                     if storage:
                         # 建立关联
-                        item.storages.add(storage)
+                        item.storage_cells.add(storage)
                         # 更新物品位置信息，确保格式为房间-家具-储物格
-                        item.location = f"{storage.room.name}-{storage.furniture.name}-{storage.storage_code}"
+                        item.location = f"{storage.room.room_name}-{storage.furniture.furniture_name}-{storage.cell_id}"
                         item.save()
+                        
+                        # 记录关联成功
+                        logger.info(f"用户 {request.user.username} 成功将物品「{item.name}」关联到储物格「{storage.cell_id}」")
+                        
                         # 清空会话数据
                         request.session.pop('association_data', None)
                         return JsonResponse({
                             'success': True, 
-                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.room.name}-{storage.furniture.name}-{storage.storage_code}」',
+                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.room.room_name}-{storage.furniture.furniture_name}-{storage.cell_id}」',
                             'complete': True
                         })
                 
@@ -433,14 +479,18 @@ def associate_item_storage(request):
             
             else:  # category == 'storage'
                 # 查找储物格
-                storage = Storage.objects.filter(storage_code=code, user=request.user).first()
+                storage = StorageCell.objects.filter(cell_id=code, user=request.user).first()
                 if not storage:
+                    logger.warning(f"用户 {request.user.username} 扫描储物格二维码未找到对应储物格，编码: {code}")
                     return JsonResponse({'success': False, 'message': '未找到该储物格，请确认标签正确'})
+                
+                # 记录储物格识别成功
+                logger.info(f"用户 {request.user.username} 成功识别储物格，储物格编号: {storage.cell_id}")
                 
                 # 保存储物格信息到会话
                 session_data['storage'] = {
-                    'code': storage.storage_code,
-                    'name': f"{storage.room.name}-{storage.furniture.name}-{storage.storage_code}"
+                    'code': storage.cell_id,
+                    'name': f"{storage.room.room_name}-{storage.furniture.furniture_name}-{storage.cell_id}"
                 }
                 
                 # 检查是否已有物品信息
@@ -449,26 +499,32 @@ def associate_item_storage(request):
                     item = Item.objects.filter(item_code=session_data['item']['code'], user=request.user).first()
                     if item:
                         # 建立关联
-                        item.storages.add(storage)
+                        item.storage_cells.add(storage)
                         # 更新物品位置信息，确保格式为房间-家具-储物格
-                        item.location = f"{storage.room.name}-{storage.furniture.name}-{storage.storage_code}"
+                        item.location = f"{storage.room.room_name}-{storage.furniture.furniture_name}-{storage.cell_id}"
                         item.save()
+                        
+                        # 记录关联成功
+                        logger.info(f"用户 {request.user.username} 成功将物品「{item.name}」关联到储物格「{storage.cell_id}」")
+                        
                         # 清空会话数据
                         request.session.pop('association_data', None)
                         return JsonResponse({
                             'success': True, 
-                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.room.name}-{storage.furniture.name}-{storage.storage_code}」',
+                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.room.room_name}-{storage.furniture.furniture_name}-{storage.cell_id}」',
                             'complete': True
                         })
                 
                 request.session['association_data'] = session_data
                 return JsonResponse({
                     'success': True, 
-                    'message': f'储物格「{storage.name}」已识别，请扫描物品标签',
+                    'message': f'储物格「{storage.cell_id}」已识别，请扫描物品标签',
                     'complete': False
                 })
         
         except Exception as e:
+            # 记录关联过程中的错误
+            logger.error(f"用户 {request.user.username} 物品与储物格关联失败，错误信息: {str(e)}")
             return JsonResponse({'success': False, 'message': str(e)})
     
     # GET请求，显示关联页面
@@ -505,26 +561,32 @@ def deposit_storage(request):
         try:
             # 获取或创建Room实例
             room, _ = Room.objects.get_or_create(
-                name=room_name,
+                room_name=room_name,
                 user=request.user
             )
             
             # 获取或创建Furniture实例
             furniture, _ = Furniture.objects.get_or_create(
-                name=furniture_name,
+                furniture_name=furniture_name,
                 user=request.user
             )
             
-            # 创建储物格记录，不指定storage_code，由save方法自动生成
-            # 注意：Storage模型中不再有name字段，所以不需要传递name参数
-            storage = Storage.objects.create(
+            # 创建储物格记录
+            storage = StorageCell.objects.create(
                 room=room,
                 furniture=furniture,
                 user=request.user,
-                qr_code=b''  # 初始化为空字节串，后续会更新
+                qr_code=b'',  # 初始化为空字节串，后续会更新
+                cell_number=1  # 初始化为1，实际使用时需要根据同一房间+家具下的最大编号递增
             )
+            
+            # 记录储物格创建成功
+            logger.info(f"用户 {request.user.username} 储物格录入成功，储物格ID: {storage.id}, 储物格编号: {storage.cell_id}")
+            
             return redirect('items:success')
         except Exception as e:
+            # 记录储物格录入失败
+            logger.error(f"用户 {request.user.username} 储物格录入失败，错误信息: {str(e)}")
             # 如果出错，重新渲染表单并显示错误
             context = {
                 'room': room_name,
@@ -567,10 +629,10 @@ def find_items(request):
         category_items[display_name] = Item.objects.filter(user=request.user, category=category)[:3]
     
     # 获取储物格，按房间、家具、储物格编号排序
-    storages = Storage.objects.filter(user=request.user).order_by('room', 'furniture', 'storage_code')
+    storages = StorageCell.objects.filter(user=request.user).order_by('room', 'furniture', 'cell_number')
     
     # 获取所有房间，用于筛选
-    rooms = Storage.objects.filter(user=request.user).values_list('room', flat=True).distinct()
+    rooms = Room.objects.filter(user=request.user).values_list('room_name', flat=True).distinct()
     
     # 获取所有分类选项
     categories = Item.CATEGORY_CHOICES
@@ -605,12 +667,18 @@ def save_description(request, item_id):
             item.description = description
             item.save()
             
+            # 记录物品描述更新成功
+            logger.info(f"用户 {request.user.username} 成功更新物品描述，物品ID: {item_id}, 物品名称: {item.name}")
+            
             return JsonResponse({'success': True, 'message': '描述保存成功'})
         except Item.DoesNotExist:
+            logger.warning(f"用户 {request.user.username} 尝试更新不存在的物品描述，物品ID: {item_id}")
             return JsonResponse({'success': False, 'message': '物品不存在'}, status=404)
         except json.JSONDecodeError:
+            logger.error(f"用户 {request.user.username} 更新物品描述时请求数据格式错误")
             return JsonResponse({'success': False, 'message': '无效的请求数据'}, status=400)
         except Exception as e:
+            logger.error(f"用户 {request.user.username} 更新物品描述失败，物品ID: {item_id}, 错误信息: {str(e)}")
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -624,14 +692,20 @@ def delete_item(request, item_id):
         try:
             # 获取物品
             item = Item.objects.get(id=item_id, user=request.user)
+            item_name = item.name
             
             # 删除物品
             item.delete()
             
+            # 记录物品删除成功
+            logger.info(f"用户 {request.user.username} 成功删除物品，物品ID: {item_id}, 物品名称: {item_name}")
+            
             return JsonResponse({'success': True, 'message': '物品删除成功'})
         except Item.DoesNotExist:
+            logger.warning(f"用户 {request.user.username} 尝试删除不存在的物品，物品ID: {item_id}")
             return JsonResponse({'success': False, 'message': '物品不存在'}, status=404)
         except Exception as e:
+            logger.error(f"用户 {request.user.username} 删除物品失败，物品ID: {item_id}, 错误信息: {str(e)}")
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -645,6 +719,7 @@ def update_item_category(request, item_id):
         try:
             # 获取物品
             item = Item.objects.get(id=item_id, user=request.user)
+            old_category = item.category
             
             # 获取新分类
             data = json.loads(request.body)
@@ -653,6 +728,7 @@ def update_item_category(request, item_id):
             # 验证分类是否有效
             valid_categories = [choice[0] for choice in Item.CATEGORY_CHOICES]
             if new_category not in valid_categories:
+                logger.warning(f"用户 {request.user.username} 尝试更新物品分类时使用无效分类，物品ID: {item_id}, 分类: {new_category}")
                 return JsonResponse({'success': False, 'message': '无效的分类'}, status=400)
             
             # 更新分类
@@ -662,12 +738,18 @@ def update_item_category(request, item_id):
             # 获取分类的显示名称
             category_display = dict(Item.CATEGORY_CHOICES).get(new_category, new_category)
             
+            # 记录物品分类更新成功
+            logger.info(f"用户 {request.user.username} 成功更新物品分类，物品ID: {item_id}, 物品名称: {item.name}, 旧分类: {old_category}, 新分类: {new_category}")
+            
             return JsonResponse({'success': True, 'message': '分类更新成功', 'category': category_display})
         except Item.DoesNotExist:
+            logger.warning(f"用户 {request.user.username} 尝试更新不存在的物品分类，物品ID: {item_id}")
             return JsonResponse({'success': False, 'message': '物品不存在'}, status=404)
         except json.JSONDecodeError:
+            logger.error(f"用户 {request.user.username} 更新物品分类时请求数据格式错误")
             return JsonResponse({'success': False, 'message': '无效的请求数据'}, status=400)
         except Exception as e:
+            logger.error(f"用户 {request.user.username} 更新物品分类失败，物品ID: {item_id}, 错误信息: {str(e)}")
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -681,24 +763,32 @@ def update_item_location(request, item_id):
         try:
             # 获取物品
             item = Item.objects.get(id=item_id, user=request.user)
+            old_location = item.location
             
             # 获取新位置
             data = json.loads(request.body)
             new_location = data.get('location')
             
             if not new_location:
+                logger.warning(f"用户 {request.user.username} 尝试更新物品位置时位置为空，物品ID: {item_id}")
                 return JsonResponse({'success': False, 'message': '位置不能为空'}, status=400)
             
             # 更新位置
             item.location = new_location
             item.save()
             
+            # 记录物品位置更新成功
+            logger.info(f"用户 {request.user.username} 成功更新物品位置，物品ID: {item_id}, 物品名称: {item.name}, 旧位置: {old_location}, 新位置: {new_location}")
+            
             return JsonResponse({'success': True, 'message': '位置更新成功', 'location': new_location})
         except Item.DoesNotExist:
+            logger.warning(f"用户 {request.user.username} 尝试更新不存在的物品位置，物品ID: {item_id}")
             return JsonResponse({'success': False, 'message': '物品不存在'}, status=404)
         except json.JSONDecodeError:
+            logger.error(f"用户 {request.user.username} 更新物品位置时请求数据格式错误")
             return JsonResponse({'success': False, 'message': '无效的请求数据'}, status=400)
         except Exception as e:
+            logger.error(f"用户 {request.user.username} 更新物品位置失败，物品ID: {item_id}, 错误信息: {str(e)}")
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
