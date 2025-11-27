@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}iStorage{% endblock %}</title>
     {% load static %}
-    <script src="{% static 'css/tailwind-cdn.min.js' %}"></script>
+    <script src="{% static 'css/tailwind-cdn.min.js' %}?v=1.0"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #F5F5F7; }
@@ -20,10 +20,31 @@
             transition: all 0.2s ease;
         }
         .apple-btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
         .card-hover:hover {
             transform: translateY(-4px);
             border-color: #007AFF;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+        .dropdown-menu {
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        .dropdown-item {
+            transition: background-color 0.2s ease;
+        }
+        .dropdown-item:hover {
+            background-color: #F5F5F7;
+        }
+        .user-menu-button {
+            border-radius: 8px;
+        }
+        .user-menu-button:hover {
+            background-color: rgba(0, 0, 0, 0.05);
         }
     </style>
 
@@ -31,26 +52,74 @@
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-6">
 
-    <nav class="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-center z-50">
-        <div class="flex items-center gap-2">
-            <div class="w-6 h-6 bg-black rounded-md"></div> <span class="font-semibold text-gray-900 text-lg">iStorage</span>
+    <nav class="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
+        <div class="w-full max-w-4xl mx-auto flex justify-between items-center px-6 h-full">
+            <a href="{% url 'index' %}" class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-black rounded-md"></div> <span class="font-semibold text-gray-900 text-lg">iStorage</span>
+            </a>
+            
+            <!-- 搜索框 - 只在找物品页面显示 -->
+            {% if request.resolver_match.url_name == 'find_items' %}
+                <div class="flex-1 mx-4 hidden md:block">
+                    <form method="GET" action="{% url 'items:find_items' %}" class="flex gap-2">
+                        <input type="text" name="q" placeholder="搜索物品名称、编号、位置..." 
+                               value="{{ search_query }}" 
+                               class="flex-1 px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm">
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors text-sm">
+                            搜索
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+            
+            <div>
+                {% if user.is_authenticated %}
+                    <div class="relative inline-block">
+                        <button id="user-menu-button" class="user-menu-button text-gray-900 hover:text-gray-600 text-sm font-medium flex items-center gap-1 py-1 px-2 transition-colors">
+                            {{ user.username|slice:':8' }}{% if user.username|length > 8 %}...{% endif %}
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="user-dropdown-menu" class="dropdown-menu absolute right-0 mt-1 w-48 bg-white py-1 z-50 hidden">
+                            <a href="{% url 'users:user_logout' %}" class="dropdown-item block px-4 py-2 text-sm text-gray-700">注销</a>
+                        </div>
+                    </div>
+                    <script>
+                        // 用户菜单交互控制
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const menuButton = document.getElementById('user-menu-button');
+                            const dropdownMenu = document.getElementById('user-dropdown-menu');
+                            
+                            // 切换下拉菜单显示状态
+                            menuButton.addEventListener('click', function(event) {
+                                event.stopPropagation();
+                                dropdownMenu.classList.toggle('hidden');
+                            });
+                            
+                            // 点击页面其他区域关闭下拉菜单
+                            document.addEventListener('click', function(event) {
+                                if (!menuButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                                    dropdownMenu.classList.add('hidden');
+                                }
+                            });
+                            
+                            // 防止菜单内点击事件冒泡
+                            dropdownMenu.addEventListener('click', function(event) {
+                                event.stopPropagation();
+                            });
+                        });
+                    </script>
+                {% else %}
+                    <a href="/users/login/" class="text-gray-900 hover:text-gray-600 text-sm font-medium">登录</a>
+                {% endif %}
+            </div>
         </div>
     </nav>
 
-    <div class="w-full max-w-4xl mt-10">
+    <div class="w-full max-w-4xl mx-auto p-0">
         {% block content %}<!-- 页面内容将在这里显示 -->{% endblock %}
     </div>
-
-    <footer class="fixed bottom-8 flex gap-8 text-gray-400">
-        <button class="flex flex-col items-center gap-1 hover:text-gray-600 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <span class="text-xs">系统设置</span>
-        </button>
-        <button class="flex flex-col items-center gap-1 hover:text-gray-600 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <span class="text-xs">帮助</span>
-        </button>
-    </footer>
 
     {% block extra_js %}{% endblock %}
 </body>

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}用户登录 - 储物空间管理系统{% endblock %}
+
+{% block content %}
+<div class="container max-w-md mx-auto py-10">
+    <div class="bg-white rounded-xl shadow-lg p-8">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">欢迎回来</h2>
+            <p class="text-gray-600">请登录您的账户以继续</p>
+        </div>
+        
+        <!-- 登录表单 -->
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <!-- 用户名/手机号输入框 -->
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
+                    用户名/手机号
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <input type="text" id="username" name="username" 
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="请输入用户名或手机号" required>
+                </div>
+                {% if form.username.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- 密码输入框 -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+                    密码
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <input type="password" id="password" name="password" 
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                           placeholder="请输入密码" required>
+                </div>
+                {% if form.password.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ form.password.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- 记住我和忘记密码 -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <input id="remember_me" name="remember_me" type="checkbox" 
+                           class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                    <label for="remember_me" class="ml-2 block text-sm text-gray-700">
+                        记住我
+                    </label>
+                </div>
+                <a href="{% url 'users:password_reset' %}" class="text-sm text-blue-600 hover:text-blue-800">
+                    忘记密码？
+                </a>
+            </div>
+            
+            <!-- 登录按钮 -->
+            <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 ease-in-out">
+                登录
+            </button>
+        </form>
+        
+        <!-- 分隔线 -->
+        <div class="relative my-8">
+            <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white text-gray-500">或者使用第三方账号登录</span>
+            </div>
+        </div>
+        
+        <!-- 第三方登录按钮 -->
+        <div class="grid grid-cols-3 gap-3">
+            <a href="{% url 'users:wechat_login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" 
+               class="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
+                <div class="w-10 h-10 rounded-full bg-[#07C160] flex items-center justify-center text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292V15M15 21h-6a3 3 0 01-3-3v-1a2 2 0 012-2h6a2 2 0 012 2v1a3 3 0 01-3 3z" />
+                    </svg>
+                </div>
+                <span class="mt-2 text-xs text-gray-600">微信</span>
+            </a>
+            
+            <a href="{% url 'users:qq_login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" 
+               class="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
+                <div class="w-10 h-10 rounded-full bg-[#12B7F5] flex items-center justify-center text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+                    </svg>
+                </div>
+                <span class="mt-2 text-xs text-gray-600">QQ</span>
+            </a>
+            
+            <a href="{% url 'users:alipay_login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" 
+               class="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
+                <div class="w-10 h-10 rounded-full bg-[#1677FF] flex items-center justify-center text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <span class="mt-2 text-xs text-gray-600">支付宝</span>
+            </a>
+        </div>
+        
+        <!-- 注册链接 -->
+        <div class="text-center mt-8">
+            <p class="text-gray-600">
+                还没有账户？ 
+                <a href="{% url 'users:user_register' %}" class="text-blue-600 hover:text-blue-800 font-medium">
+                    立即注册
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

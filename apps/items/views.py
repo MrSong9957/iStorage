@@ -13,7 +13,7 @@ import random
 import base64
 import io
 import json
-from .models import Item, Storage
+from .models import Item, Storage, Room, Furniture
 
 def generate_item_code():
     """
@@ -37,7 +37,8 @@ def deposit_item(request):
         
         # 二选一验证：名称或图片至少有一个不为空
         if not name and not image:
-            return redirect('items:deposit')
+            # 表单验证失败，返回原页面并显示错误
+            return render(request, 'items/deposit_item.html', {'error': '请输入物品名称或上传图片'})
         
         try:
             # 生成唯一的物品编号
@@ -84,13 +85,14 @@ def deposit_item(request):
             # 保存二维码到物品
             item.qr_code = qr_base64
             item.save()
-            return redirect('items:deposit')
+            # 物品创建成功，重定向到成功页面
+            return redirect('items:success')
         except Exception as e:
-            return redirect('items:deposit')
+            # 异常处理，返回原页面并显示错误
+            return render(request, 'items/deposit_item.html', {'error': '物品录入失败，请重试'})
     else:
-        # GET请求通常不会直接访问这个视图，因为表单在模态窗口中
-        # 但如果直接访问，返回items:deposit
-        return redirect('items:deposit')
+        # GET请求返回渲染的模板
+        return render(request, 'items/deposit_item.html')
 
 class ItemCreateView(CreateView):
     """
@@ -222,18 +224,29 @@ def tag_view(request):
             
             try:
                 if category == 'storage':
-                    # 检查储物格编号是否已存在
-                    if Storage.objects.filter(storage_code=item_code).exists():
-                        return JsonResponse({'success': False, 'message': '该储物格编号已存在！'})
+                    # 从名称中提取房间和家具信息（假设名称格式为：房间-家具）
+                    room_name = name.split('-')[0].strip() if '-' in name else ''
+                    furniture_name = name.split('-')[1].strip() if '-' in name and len(name.split('-')) > 1 else ''
                     
-                    # 创建新储物格记录
-                    storage_data = {
-                        'name': name,
-                        'storage_code': item_code,
-                        'user': request.user
-                    }
+                    # 获取或创建Room实例
+                    room, _ = Room.objects.get_or_create(
+                        name=room_name,
+                        user=request.user
+                    )
                     
-                    new_storage = Storage.objects.create(**storage_data)
+                    # 获取或创建Furniture实例
+                    furniture, _ = Furniture.objects.get_or_create(
+                        name=furniture_name,
+                        user=request.user
+                    )
+                    
+                    # 创建新储物格记录，不指定storage_code，由save方法自动生成
+                    new_storage = Storage.objects.create(
+                        room=room,
+                        furniture=furniture,
+                        user=request.user,
+                        qr_code=b''  # 初始化为空字节串，后续会更新
+                    )
                     return JsonResponse({'success': True, 'message': '储物格标签录入成功！'})
                 else:
                     # 检查物品编号是否已存在
@@ -291,21 +304,41 @@ def tag_view(request):
         image = request.FILES.get('image')
         category = request.POST.get('category', 'item')
         
-        # 为储物格生成特殊前缀的编号
-        if not item_code:
-            if category == 'storage':
-                # 储物格编号：STORAGE-日期-随机数
-                prefix = 'STORAGE'
-                timestamp = datetime.datetime.now().strftime('%Y%m%d')
-                random_num = str(random.randint(10000, 99999))
-                item_code = f"{prefix}-{timestamp}-{random_num}"
-            else:
-                item_code = generate_item_code()
+        # 为物品生成编号，储物格编号由模型自动生成
+        if category == 'storage':
+            # 从名称中提取房间和家具信息（格式：房间-家具）
+            room_name = name.split('-')[0].strip() if '-' in name else ''
+            furniture_name = name.split('-')[1].strip() if '-' in name and len(name.split('-')) > 1 else ''
+            
+            # 获取或创建Room实例
+            room, _ = Room.objects.get_or_create(
+                name=room_name,
+                user=request.user
+            )
+            
+            # 获取或创建Furniture实例
+            furniture, _ = Furniture.objects.get_or_create(
+                name=furniture_name,
+                user=request.user
+            )
+            
+            # 创建储物格记录，由save方法自动生成storage_code
+            storage = Storage.objects.create(
+                room=room,
+                furniture=furniture,
+                user=request.user,
+                qr_code=b''  # 初始化为空字节串
+            )
+            
+            # 使用生成的storage_code作为item_code
+            item_code = storage.storage_code
+        elif not item_code:
+            # 为物品生成编号
+            item_code = generate_item_code()
         
-        # 生成二维码数据，根据类别包含不同信息
+        # 生成二维码数据，只包含必要信息
         qr_data = json.dumps({
             'code': item_code,
-            'name': name,
             'category': category
         })
         
@@ -381,13 +414,13 @@ def associate_item_storage(request):
                         # 建立关联
                         item.storages.add(storage)
                         # 更新物品位置信息，确保格式为房间-家具-储物格
-                        item.location = storage.name
+                        item.location = f"{storage.room.name}-{storage.furniture.name}-{storage.storage_code}"
                         item.save()
                         # 清空会话数据
                         request.session.pop('association_data', None)
                         return JsonResponse({
                             'success': True, 
-                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.name}」',
+                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.room.name}-{storage.furniture.name}-{storage.storage_code}」',
                             'complete': True
                         })
                 
@@ -407,7 +440,7 @@ def associate_item_storage(request):
                 # 保存储物格信息到会话
                 session_data['storage'] = {
                     'code': storage.storage_code,
-                    'name': storage.name
+                    'name': f"{storage.room.name}-{storage.furniture.name}-{storage.storage_code}"
                 }
                 
                 # 检查是否已有物品信息
@@ -418,13 +451,13 @@ def associate_item_storage(request):
                         # 建立关联
                         item.storages.add(storage)
                         # 更新物品位置信息，确保格式为房间-家具-储物格
-                        item.location = storage.name
+                        item.location = f"{storage.room.name}-{storage.furniture.name}-{storage.storage_code}"
                         item.save()
                         # 清空会话数据
                         request.session.pop('association_data', None)
                         return JsonResponse({
                             'success': True, 
-                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.name}」',
+                            'message': f'成功将物品「{item.name}」关联到储物格「{storage.room.name}-{storage.furniture.name}-{storage.storage_code}」',
                             'complete': True
                         })
                 
@@ -465,29 +498,37 @@ def deposit_storage(request):
     """
     if request.method == 'POST':
         # 获取表单数据
-        room = request.POST.get('room', '')
-        furniture = request.POST.get('furniture', '')
-        unit = request.POST.get('unit', '')
+        room_name = request.POST.get('room', '')
+        furniture_name = request.POST.get('furniture', '')
         name = request.POST.get('name', '')  # 组合后的名称
-        storage_code = request.POST.get('item_code', '')  # 从tag_view传来的储物格编号
         
         try:
-            # 创建储物格记录
+            # 获取或创建Room实例
+            room, _ = Room.objects.get_or_create(
+                name=room_name,
+                user=request.user
+            )
+            
+            # 获取或创建Furniture实例
+            furniture, _ = Furniture.objects.get_or_create(
+                name=furniture_name,
+                user=request.user
+            )
+            
+            # 创建储物格记录，不指定storage_code，由save方法自动生成
+            # 注意：Storage模型中不再有name字段，所以不需要传递name参数
             storage = Storage.objects.create(
-                storage_code=storage_code,
-                name=name,
                 room=room,
                 furniture=furniture,
-                unit=unit,
-                user=request.user
+                user=request.user,
+                qr_code=b''  # 初始化为空字节串，后续会更新
             )
             return redirect('items:success')
         except Exception as e:
             # 如果出错，重新渲染表单并显示错误
             context = {
-                'room': room,
-                'furniture': furniture,
-                'unit': unit,
+                'room': room_name,
+                'furniture': furniture_name,
                 'error': str(e)
             }
             return render(request, 'items/deposit_storage.html', context)
@@ -525,8 +566,8 @@ def find_items(request):
     for category, display_name in categories:
         category_items[display_name] = Item.objects.filter(user=request.user, category=category)[:3]
     
-    # 获取储物格，按房间、家具、储物格排序
-    storages = Storage.objects.filter(user=request.user).order_by('room', 'furniture', 'unit')
+    # 获取储物格，按房间、家具、储物格编号排序
+    storages = Storage.objects.filter(user=request.user).order_by('room', 'furniture', 'storage_code')
     
     # 获取所有房间，用于筛选
     rooms = Storage.objects.filter(user=request.user).values_list('room', flat=True).distinct()

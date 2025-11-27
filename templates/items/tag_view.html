@@ -3,46 +3,30 @@
 {% block title %}物品标签 - iStorage{% endblock %}
 
 {% block content %}
-<div class="container mx-auto my-4">
-    <div class="max-w-md mx-auto glass-card p-4 rounded-xl shadow-lg">
-        <!-- 移除标题 -->
-        
-        <!-- 打印成功提示将通过JavaScript动态创建 -->
-        
-        <!-- 标签展示区域 - 减小内边距 -->
-        <div id="tag-display" class="border border-gray-200 rounded-lg py-2 px-0 mb-2 bg-white">
-        <!-- 隐藏字段，用于存储来源信息 -->
-        <input type="hidden" id="source-info" value="{{ source|default:'item_create' }}">
-            <div class="text-center">
-                <!-- 物品名称 -->
-                <h2 class="text-2xl font-bold mb-1">{{ name }}</h2>
-                
-                <!-- 物品编号 -->
-                <div class="text-gray-600 mb-2">{{ item_code }}</div>
-                
-                <!-- 二维码 -->
-                <div class="flex justify-center">
-                    <img src="data:image/png;base64,{{ qr_code }}" alt="物品二维码" class="max-w-36 max-h-36">
-                </div>
-            </div>
-        </div>
-        
-        <!-- 操作按钮 -->
-        <div class="space-y-2">
-            <button id="print-button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
-                打印标签
-            </button>
-            <div class="flex space-x-2">
-                <button id="back-button" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">
-                    返回录入
-                </button>
-                <button id="input-button" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
-                    录入标签
-                </button>
-            </div>
-            <p class="text-center text-xs text-blue-500 mt-1">提示：无需打印标签时，可直接点击录入标签</p>
-        </div>
-    </div>
+<!-- 标签展示区域 -->
+<div id="tag-display" class="w-[calc(9rem+20px)] mx-auto glass-card p-2 rounded-xl shadow-lg mb-4 border border-gray-200 bg-white text-center">
+    <!-- 隐藏字段，用于存储来源信息 -->
+    <input type="hidden" id="source-info" value="{{ source|default:'item_create' }}">
+    
+    <!-- 物品名称 -->
+    <div class="text-2xl font-bold mb-1 max-w-36 mx-auto break-words">{{ name|default:"未命名物品" }}</div>
+    
+    <!-- 二维码 -->
+    <img src="data:image/png;base64,{{ qr_code }}" alt="物品二维码" class="max-w-36 max-h-36 mx-auto">
+</div>
+
+<!-- 操作按钮区域 -->
+<div class="w-[calc(9rem+20px)] mx-auto space-y-2">
+    <button id="print-button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+        打印标签
+    </button>
+    <button id="input-button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+        保存标签
+    </button>
+    <button id="back-button" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+        返回录入
+    </button>
+    <p class="text-center text-sm text-blue-500 mt-1">提示：如无需打印，点击保存即可</p>
 </div>
 {% endblock %}
 
@@ -96,111 +80,102 @@
         }
     });
     
-    // 录入标签按钮
-        document.getElementById('input-button').addEventListener('click', function() {
-            // 获取标签信息
-            const name = '{{ name|escapejs }}';
-            const itemCode = '{{ item_code|escapejs }}';
-            
-            // 显示加载状态
-            const button = this;
-            const originalText = button.textContent;
-            button.disabled = true;
-            button.textContent = '录入中...';
-            
-            // 发送AJAX请求
-            fetch('{% url "items:tag_view" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: new URLSearchParams({
-                    'action': 'save_tag',
-                    'name': name,
-                    'item_code': itemCode,
-                    'category': '{{ category }}'
-                })
+    // 保存标签按钮
+    document.getElementById('input-button').addEventListener('click', function() {
+        // 获取标签信息
+        const name = '{{ name|escapejs }}';
+        const itemCode = '{{ item_code|escapejs }}';
+        
+        // 显示加载状态
+        const button = this;
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = '保存中...';
+        
+        // 发送AJAX请求保存标签到数据库
+        fetch('{% url "items:tag_view" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: new URLSearchParams({
+                'action': 'save_tag',
+                'name': name,
+                'item_code': itemCode,
+                'category': '{{ category|default:"item" }}'
             })
-            .then(response => {
-                return response.json().then(data => {
-                    if (!response.ok) {
-                        throw new Error(data.message || '服务器错误');
-                    }
-                    return data;
-                });
-            })
-            .then(data => {
-                // 恢复按钮状态
-                button.disabled = false;
-                button.textContent = originalText;
-                
-                // 检查是否已存在提示元素
-                let alertElement = document.getElementById('save-success-alert');
-                
-                if (!alertElement) {
-                    // 创建提示元素
-                    alertElement = document.createElement('div');
-                    alertElement.id = 'save-success-alert';
+        })
+        .then(response => {
+            return response.json().then(data => {
+                if (!response.ok) {
+                    throw new Error(data.message || '服务器错误');
                 }
-                
-                // 处理成功或失败情况
-                if (data.success) {
-                    // 成功时跳转到成功页面
-                    window.location.href = '{% url "items:success" %}';
-                } else {
-                    // 失败时在当前页面显示错误信息
-                    alertElement.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2 text-center';
-                    alertElement.innerHTML = `<strong class="font-bold">录入失败！</strong> ${data.message || '未知错误'}`;
-                    
-                    // 插入到标签显示区域上方
-                    const tagDisplay = document.getElementById('tag-display');
-                    if (tagDisplay && !alertElement.parentNode) {
-                        tagDisplay.parentNode.insertBefore(alertElement, tagDisplay);
-                    }
-                    
-                    // 显示提示
-                    alertElement.style.display = 'block';
-                    
-                    // 3秒后自动隐藏提示
-                    setTimeout(function() {
-                        if (alertElement) {
-                            alertElement.style.display = 'none';
-                        }
-                    }, 3000);
-                }
-            })
-            .catch(error => {
-                // 恢复按钮状态
-                button.disabled = false;
-                button.textContent = originalText;
-                
-                console.error('录入标签时出错:', error);
-                
-                // 创建或更新错误提示
-                let alertElement = document.getElementById('save-success-alert');
-                
-                if (!alertElement) {
-                    alertElement = document.createElement('div');
-                    alertElement.id = 'save-success-alert';
-                    const tagDisplay = document.getElementById('tag-display');
-                    if (tagDisplay) {
-                        tagDisplay.parentNode.insertBefore(alertElement, tagDisplay);
-                    }
-                }
-                
-                alertElement.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2 text-center';
-                alertElement.innerHTML = `<strong class="font-bold">录入失败！</strong> ${error.message || '未知错误，请重试。'}`;
-                alertElement.style.display = 'block';
-                
-                // 3秒后自动隐藏提示
-                setTimeout(function() {
-                    if (alertElement) {
-                        alertElement.style.display = 'none';
-                    }
-                }, 3000);
+                return data;
             });
+        })
+        .then(data => {
+            // 恢复按钮状态
+            button.disabled = false;
+            button.textContent = originalText;
+            
+            // 成功时跳转到成功页面
+            if (data.success) {
+                window.location.href = '{% url "items:success" %}';
+            } else {
+                // 失败时显示错误信息
+                showNotification('bg-red-100 border-red-400 text-red-700', 
+                                 `<strong class="font-bold">保存失败！</strong> ${data.message || '未知错误'}`);
+            }
+        })
+        .catch(error => {
+            // 恢复按钮状态
+            button.disabled = false;
+            button.textContent = originalText;
+            
+            console.error('保存标签时出错:', error);
+            // 显示错误提示
+            showNotification('bg-red-100 border-red-400 text-red-700', 
+                             `<strong class="font-bold">保存失败！</strong> ${error.message || '未知错误，请重试。'}`);
+        });
     });
+    
+    // 显示通知消息的辅助函数
+    function showNotification(classes, content) {
+        // 检查是否已存在提示元素
+        let alertElement = document.getElementById('notification-alert');
+        
+        if (!alertElement) {
+            // 创建提示元素
+            alertElement = document.createElement('div');
+            alertElement.id = 'notification-alert';
+            alertElement.className = 'px-4 py-3 rounded mb-2 text-center transition-opacity duration-300';
+            
+            // 插入到标签显示区域上方
+            const tagDisplay = document.getElementById('tag-display');
+            if (tagDisplay) {
+                tagDisplay.parentNode.insertBefore(alertElement, tagDisplay);
+            }
+        }
+        
+        // 设置样式和内容
+        alertElement.className = `${classes} px-4 py-3 rounded mb-2 text-center transition-opacity duration-300 opacity-0`;
+        alertElement.innerHTML = content;
+        
+        // 触发重排后显示（用于动画效果）
+        void alertElement.offsetWidth;
+        alertElement.style.opacity = '1';
+        
+        // 3秒后自动隐藏提示
+        setTimeout(() => {
+            alertElement.style.opacity = '0';
+            setTimeout(() => {
+                if (alertElement.parentNode) {
+                    alertElement.parentNode.removeChild(alertElement);
+                }
+            }, 300);
+        }, 3000);
+    }
     
     // 仅打印标签部分
     window.onbeforeprint = function() {

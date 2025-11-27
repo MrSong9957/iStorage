@@ -18,9 +18,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # 用户应用 - 只保留登录相关功能
-    path('users/', include('apps.users.urls')),
+    path('users/', include(('apps.users.urls', 'users'), namespace='users')),
     # 物品应用URLs
-    path('items/', include('apps.items.urls')),
+    path('items/', include(('apps.items.urls', 'items'), namespace='items')),
 ]
 
 # 静态文件和媒体文件的URL配置

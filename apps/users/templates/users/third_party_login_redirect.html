@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}第三方登录重定向{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg rounded-lg overflow-hidden">
+                <div class="card-body p-5">
+                    <h2 class="text-center mb-4 font-weight-light">正在跳转到{{ provider }}</h2>
+                    <div class="text-center">
+                        <p>请稍候，我们正在为您连接到{{ provider }}登录页面...</p>
+                        <p class="text-sm text-gray-500 mt-4">
+                            如果您长时间没有被重定向，请<a href="{% url 'users:user_login' %}">返回登录页面</a>。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

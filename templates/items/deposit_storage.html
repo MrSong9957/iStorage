@@ -43,13 +43,6 @@
                            class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
                            placeholder="例如：白色衣柜、书桌、床头柜">
                 </div>
-
-                <div class="mb-6">
-                    <label for="id_unit" class="block text-sm font-medium text-gray-700 mb-1">储物格</label>
-                    <input type="text" name="unit" id="id_unit" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                           placeholder="例如：第一层左侧、抽屉A、收纳盒3号">
-                </div>
                 
                 <!-- 隐藏字段，用于存储组合后的名称、类型和来源标识 -->
                 <input type="hidden" name="name" id="hiddenName" value="">
@@ -78,16 +71,15 @@
         // 获取表单字段值
         const room = document.getElementById('id_room').value.trim();
         const furniture = document.getElementById('id_furniture').value.trim();
-        const unit = document.getElementById('id_unit').value.trim();
         
         // 验证字段
-        if (!room || !furniture || !unit) {
+        if (!room || !furniture) {
             alert('请填写所有必填字段');
             return;
         }
         
-        // 组合成储物格名称（格式：房间-家具-储物格）
-        const storageName = `${room}-${furniture}-${unit}`;
+        // 组合成储物格名称（格式：房间-家具）
+        const storageName = `${room}-${furniture}`;
         
         // 设置隐藏字段值
         document.getElementById('hiddenName').value = storageName;

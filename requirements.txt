@@ -1,3 +1,10 @@
 # 核心依赖
 django==4.2.11
 python-dotenv==1.0.1
+
+# Supabase依赖
+supabase==2.0.0
+requests==2.32.3
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.7
+psycopg2cffi==2.9.0  # 纯Python实现的PostgreSQL驱动
