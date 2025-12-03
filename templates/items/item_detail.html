@@ -1,0 +1,43 @@
+{% extends 'base_template.html' %}
+{% load static %}
+
+{% block title %}物品详情 - iStorage{% endblock %}
+
+{% block content %}
+    <div class="glass-card p-6 rounded-xl max-w-2xl mx-auto bg-white">
+        <h1 class="text-xl font-semibold mb-4">物品详情</h1>
+
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="text-sm text-gray-600">名称</label>
+                <input name="name" type="text" value="{{ item.name }}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none text-sm" />
+            </div>
+
+            <div>
+                <label class="text-sm text-gray-600">房间（位置）</label>
+                <input name="location" type="text" value="{{ item.location }}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none text-sm" />
+            </div>
+
+            <div>
+                <label class="text-sm text-gray-600">分类（只读/兼容）</label>
+                <div class="mt-1 text-sm text-gray-700">{{ item.category|default:"—" }}</div>
+            </div>
+
+            <div>
+                <label class="text-sm text-gray-600">图片（可选）</label>
+                {% if item.image %}
+                    <div class="mt-2 mb-2">
+                        <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-32 h-32 object-cover rounded-md" />
+                    </div>
+                {% endif %}
+                <input name="image" type="file" accept="image/*" class="block text-sm" />
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="submit" class="apple-btn-primary text-white px-4 py-2 rounded-lg">保存</button>
+                <a href="{% url 'items:find_items' %}" class="text-sm text-gray-600">返回</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

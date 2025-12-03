@@ -1,0 +1,69 @@
+<aside class="sidebar">
+    <!-- 导航菜单 -->
+    <nav class="sidebar-nav">
+        <ul class="nav-list">
+            {% for nav in main_navs %}
+            <li class="nav-item{% if request.path == nav.url %} active{% endif %}" data-filter="{{ nav.name }}">
+                <a href="{{ nav.url }}" class="nav-link">
+                    <span class="nav-text">{{ nav.icon }}{{ nav.name }}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </nav>
+    
+    <!-- 子标签 -->
+    <div class="category-tags">
+        {% if request.resolver_match.view_name == 'items:find_items' %}
+        <!-- 找物品页面的分类标签 -->
+        <ul class="tags-list">
+            <!-- 全部选项 -->
+            <li class="tag-item active" data-tag="all">
+                <a href="#" class="tag-link">全部</a>
+            </li>
+            
+            <!-- 动态生成分类标签 -->
+            {% if filter_type == 'room' %}
+                {% for room in all_rooms %}
+                    <li class="tag-item" data-tag="{{ room|slugify }}">
+                        <a href="#" class="tag-link">{{ room }}</a>
+                    </li>
+                {% endfor %}
+            {% else %}
+                {% for category in all_categories %}
+                    <li class="tag-item" data-tag="{{ category|slugify }}">
+                        <a href="#" class="tag-link">{{ category }}</a>
+                    </li>
+                {% endfor %}
+            {% endif %}
+            <!-- 增加分类标签 -->
+            <li class="tag-item" data-tag="add-category">
+                <a href="#" class="tag-link" onclick="showNavModal()">+ 增加分类</a>
+            </li>
+            <!-- 编辑分类标签 -->
+            <li class="tag-item" data-tag="edit-categories">
+                <a href="#" class="tag-link" onclick="showEditModal('category', '', '')">✏️ 编辑分类</a>
+            </li>
+        </ul>
+        {% else %}
+        <!-- 其他页面的子标签（如管理分类页面） -->
+        <ul class="tags-list">
+            {% if sub_navs %}
+            {% for sub_nav in sub_navs %}
+            <li class="tag-item{% if active_sub_tag == sub_nav.name %} active{% endif %}" data-tag="{{ sub_nav.name }}">
+                <a href="{{ sub_nav.url }}" class="tag-link">{{ sub_nav.name }}</a>
+            </li>
+            {% endfor %}
+            {% endif %}
+            <!-- 增加分类标签 -->
+            <li class="tag-item" data-tag="add-category">
+                <a href="#" class="tag-link" onclick="showNavModal()">+ 增加分类</a>
+            </li>
+            <!-- 编辑分类标签 -->
+            <li class="tag-item" data-tag="edit-categories">
+                <a href="#" class="tag-link" onclick="showEditModal('category', '', '')">✏️ 编辑分类</a>
+            </li>
+        </ul>
+        {% endif %}
+    </div>
+</aside>

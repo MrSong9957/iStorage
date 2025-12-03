@@ -1,0 +1,216 @@
+{% extends 'items/find_items_base.html' %}
+{% load static %}
+
+{% block title %}管理分类 - iStorage{% endblock %}
+
+{% block section_title %}分类管理{% endblock %}
+
+{% block items_content %}
+<!-- 分类管理数据展示区域 -->
+<div class="items-section" id="content-categories">
+    {% if categories %}
+        <div class="items-grid">
+            {% for category in categories %}
+                <div class="item-card">
+                    <div class="item-card-header">
+                        <h4 class="item-name">{{ category.name }}</h4>
+                    </div>
+                    <div class="item-card-content">
+                        <div class="item-meta">
+                            <div class="meta-item">
+                                <span class="meta-label">操作</span>
+                                <span class="meta-value">
+                                    <button class="action-btn edit-btn" onclick="showEditModal('category', '{{ category.id }}', '{{ category.name }}')" style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 14px;">
+                                        ✏️
+                                    </button>
+                                    <form method="post" action="{% url 'items:manage_categories' %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="delete_category" value="1">
+                                        <input type="hidden" name="category_id" value="{{ category.id }}">
+                                        <button type="submit" class="action-btn delete-btn" onclick="return confirm('确定要删除这个分类吗？')" style="background: none; border: none; cursor: pointer; color: #ff3b30; font-size: 14px;">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📁</div>
+            <p class="empty-text">暂无分类</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- 房间管理标题区域 -->
+<div class="section-header" style="margin-top: var(--spacing-xl);">
+    <h3 class="section-title">房间管理</h3>
+</div>
+
+<!-- 房间管理数据展示区域 -->
+<div class="items-section" id="content-rooms">
+    {% if rooms %}
+        <div class="items-grid">
+            {% for room in rooms %}
+                <div class="item-card">
+                    <div class="item-card-header">
+                        <h4 class="item-name">{{ room }}</h4>
+                    </div>
+                    <div class="item-card-content">
+                        <div class="item-meta">
+                            <div class="meta-item">
+                                <span class="meta-label">操作</span>
+                                <span class="meta-value">
+                                    <button class="action-btn edit-btn" onclick="showEditModal('room', '', '{{ room }}')" style="background: none; border: none; cursor: pointer; color: var(--accent); font-size: 14px;">
+                                        ✏️
+                                    </button>
+                                    <form method="post" action="{% url 'items:manage_categories' %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="delete_room" value="1">
+                                        <input type="hidden" name="room_name" value="{{ room }}">
+                                        <button type="submit" class="action-btn delete-btn" onclick="return confirm('确定要删除这个房间吗？这将清除所有使用该房间的物品的位置信息。')" style="background: none; border: none; cursor: pointer; color: #ff3b30; font-size: 14px;">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🏠</div>
+            <p class="empty-text">暂无房间</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- 编辑模态框 -->
+<div class="modal" id="edit-modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="edit-modal-title">编辑分类</h3>
+            <button class="modal-close" onclick="hideEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="edit-form" method="post" action="{% url 'items:manage_categories' %}">
+                {% csrf_token %}
+                <input type="hidden" name="category_id" id="edit-category-id">
+                <input type="hidden" name="old_name" id="edit-old-name">
+                
+                <div class="form-group">
+                    <label for="edit-name" class="form-label">名称</label>
+                    <input type="text" id="edit-name" name="new_name" class="form-input" placeholder="请输入新名称" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel-btn" onclick="hideEditModal()">取消</button>
+            <button class="modal-btn confirm-btn" onclick="document.getElementById('edit-form').submit()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 显示编辑模态框
+    function showEditModal(type, id, name) {
+        const modal = document.getElementById('edit-modal');
+        const modalTitle = document.getElementById('edit-modal-title');
+        const categoryId = document.getElementById('edit-category-id');
+        const oldName = document.getElementById('edit-old-name');
+        const editName = document.getElementById('edit-name');
+        const form = document.getElementById('edit-form');
+        
+        // 移除之前可能存在的隐藏字段
+        const existingUpdateField = form.querySelector('input[name="update_category"], input[name="update_room"]');
+        if (existingUpdateField) {
+            existingUpdateField.remove();
+        }
+        
+        // 设置模态框标题和类型
+        if (type === 'category') {
+            modalTitle.textContent = '编辑分类';
+            categoryId.value = id;
+            oldName.value = '';
+            // 添加分类更新字段
+            const updateField = document.createElement('input');
+            updateField.type = 'hidden';
+            updateField.name = 'update_category';
+            updateField.value = '1';
+            form.appendChild(updateField);
+        } else {
+            modalTitle.textContent = '编辑房间';
+            categoryId.value = '';
+            oldName.value = name;
+            // 添加房间更新字段
+            const updateField = document.createElement('input');
+            updateField.type = 'hidden';
+            updateField.name = 'update_room';
+            updateField.value = '1';
+            form.appendChild(updateField);
+        }
+        
+        // 设置当前名称
+        editName.value = name;
+        
+        // 显示模态框
+        modal.style.display = 'flex';
+        
+        // 阻止背景滚动
+        document.body.style.overflow = 'hidden';
+        
+        // 聚焦输入框
+        editName.focus();
+    }
+    
+    // 隐藏编辑模态框
+    function hideEditModal() {
+        const modal = document.getElementById('edit-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    
+    // 点击模态框外部关闭
+    document.getElementById('edit-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-modal') {
+            hideEditModal();
+        }
+    });
+    
+    // 子标签点击切换功能
+    document.querySelectorAll('.tag-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const tagItem = link.closest('.tag-item');
+            const tag = tagItem.dataset.tag;
+            
+            // 更新子标签激活状态
+            document.querySelectorAll('.tag-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            tagItem.classList.add('active');
+            
+            // 切换内容显示
+            if (tag === 'categories') {
+                // 显示分类管理，隐藏房间管理
+                document.getElementById('content-categories').style.display = 'block';
+                document.getElementById('content-rooms').style.display = 'none';
+            } else if (tag === 'rooms') {
+                // 显示房间管理，隐藏分类管理
+                document.getElementById('content-categories').style.display = 'none';
+                document.getElementById('content-rooms').style.display = 'block';
+            }
+        });
+    });
+</script>
+{% endblock %}

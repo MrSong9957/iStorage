@@ -1,0 +1,79 @@
+<div class="modal">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">物品详情</h3>
+            <button class="modal-close" data-close-modal>&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="item-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="item-name" class="form-label">名称</label>
+                    <input type="text" id="item-name" name="name" class="form-input" value="{{ item.name|default:'' }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="item-location" class="form-label">房间（位置）</label>
+                    <input type="text" id="item-location" name="location" class="form-input" value="{{ item.location|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">分类（只读/兼容）</label>
+                    <div class="form-static">{{ item.category|default:"—" }}</div>
+                </div>
+                <div class="form-group">
+                    <label for="item-image" class="form-label">图片（可选）</label>
+                    {% if item.image %}
+                        <div class="image-preview">
+                            <img src="{{ item.image.url }}" alt="{{ item.name }}" class="preview-image">
+                        </div>
+                    {% endif %}
+                    <input type="file" id="item-image" name="image" accept="image/*" class="form-file">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn delete-btn" id="delete-item-btn">删除</button>
+            <button class="modal-btn cancel-btn" data-close-modal>取消</button>
+            <button class="modal-btn confirm-btn" id="save-item-btn">保存</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 模态框内样式补充 */
+.form-static {
+    padding: 12px 16px;
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius);
+    font-size: 15px;
+    color: var(--text-primary);
+    margin-top: 8px;
+}
+
+.image-preview {
+    margin: 12px 0;
+}
+
+.preview-image {
+    width: 100%;
+    max-height: 200px;
+    object-cover: contain;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.form-file {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.delete-btn {
+    background-color: #ff453a;
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #ff3b30;
+}
+</style>

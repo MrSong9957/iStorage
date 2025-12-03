@@ -55,6 +55,8 @@ storage/
 ### scripts 目录
 包含各种辅助脚本，用于执行一次性任务或调试操作
 
+- `fetch_find_loggedin.py`：本地开发辅助脚本 — 使用 Django test client 创建临时用户并抓取 `/items/find/` 渲染后的 HTML（仅用于本地开发/调试，非生产）。
+
 ### static 目录
 用于存储静态文件，如 CSS、JavaScript、图片等
 
@@ -66,3 +68,18 @@ storage/
 
 ## 项目优化
 已完成项目文件清理，删除了不必要的临时脚本和调试文件，优化了项目结构，提高了可维护性。
+
+## 新增文件说明
+- `templates/items/item_detail.html`：物品详情与编辑页面（用于在卡片点击后查看和修改物品名称、房间/位置、图片）。
+
+## 本次变更新增文件
+- `apps/items/migrations/0003_add_category.py`：新增迁移，用于创建 `Category` 模型（每用户独立的分类表），以支持可编辑分类功能。
+- `templates/items/_item_modal.html`：物品编辑模态窗片段（在 `find_items` 页面点击卡片时通过 AJAX 加载并展示）。
+
+- `static/css/custom.css`：极简现代化样式文件，实现了苹果设计风格和响应式布局，用于物品查找页面的整体样式设计。
+
+## 本次变更新改文件
+## Context7文档汇总
+- `docs/context7_docs_summary.md`：汇总了通过Context7获取的项目技术栈相关文档内容，包括Django、Supabase、Tailwind CSS和python-dotenv等技术的核心用法。
+
+说明：为了兼容现有数据，`Category` 模型与原有 `Item.location` 字段共存。重命名分类时，后台会同步更新 `Item.location` 中匹配的值以保证兼容性。

@@ -1,97 +1,14 @@
 {% extends 'base_template.html' %}
-{% load static %}
 
-{% block title %}录入储物格 - iStorage{% endblock %}
+{% block title %}功能已移除 - iStorage{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-2xl mx-auto my-24">
-    <div class="glass-card rounded-3xl shadow-lg overflow-hidden">
-        <div class="p-6 border-b border-gray-100">
-            <div class="flex items-center mb-2">
-                <a href="{% url 'items:print_selector' %}" class="mr-4 text-blue-500 hover:text-blue-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </a>
-                <h1 class="text-2xl font-semibold text-gray-900">录入储物格</h1>
-            </div>
-            <p class="text-sm text-gray-500 mt-1">请完善以下位置信息以建立索引</p>
-        </div>
-        
-        <div class="p-6">
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="bg-blue-50 text-blue-700 p-4 rounded-xl mb-6">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-            
-            <form id="storageForm" method="post" action="{% url 'items:tag_view' %}">
-                {% csrf_token %}
-                
-                <div class="mb-6">
-                    <label for="id_room" class="block text-sm font-medium text-gray-700 mb-1">房间</label>
-                    <input type="text" name="room" id="id_room" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                           placeholder="例如：主卧、客厅、书房">
-                </div>
-
-                <div class="mb-6">
-                    <label for="id_furniture" class="block text-sm font-medium text-gray-700 mb-1">家具</label>
-                    <input type="text" name="furniture" id="id_furniture" required
-                           class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" 
-                           placeholder="例如：白色衣柜、书桌、床头柜">
-                </div>
-                
-                <!-- 隐藏字段，用于存储组合后的名称、类型和来源标识 -->
-                <input type="hidden" name="name" id="hiddenName" value="">
-                <input type="hidden" name="category" value="storage">
-                <input type="hidden" name="source" value="deposit_storage">
-                
-                <div class="flex justify-center mt-8">
-                    <button type="submit" class="apple-btn-primary text-white font-medium px-8 py-3 rounded-xl shadow-sm hover:shadow transition-all w-full sm:w-auto">
-                        确认录入
-                    </button>
-                </div>
-            </form>
-        </div>
+  <div class="max-w-2xl mx-auto my-24 text-center">
+    <div class="bg-white rounded-2xl p-10 shadow-sm">
+      <p class="text-gray-700">打印储物格标签功能已移除。</p>
+      <div class="mt-6">
+        <a href="{% url 'items:item_create' %}" class="text-blue-600 hover:underline">前往创建物品并打印标签</a>
+      </div>
     </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    const storageForm = document.getElementById('storageForm');
-    
-    storageForm.addEventListener('submit', (e) => {
-        // 阻止表单默认提交，先处理数据
-        e.preventDefault();
-        
-        // 获取表单字段值
-        const room = document.getElementById('id_room').value.trim();
-        const furniture = document.getElementById('id_furniture').value.trim();
-        
-        // 验证字段
-        if (!room || !furniture) {
-            alert('请填写所有必填字段');
-            return;
-        }
-        
-        // 组合成储物格名称（格式：房间-家具）
-        const storageName = `${room}-${furniture}`;
-        
-        // 设置隐藏字段值
-        document.getElementById('hiddenName').value = storageName;
-        
-        // 更新按钮状态
-        const btn = e.target.querySelector('button[type="submit"]');
-        btn.innerHTML = '正在生成标签...';
-        btn.disabled = true;
-        btn.classList.add('opacity-75', 'cursor-not-allowed');
-        
-        // 手动提交表单
-        storageForm.submit();
-    });
-</script>
+  </div>
 {% endblock %}

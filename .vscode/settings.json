@@ -1,0 +1,14 @@
+{
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "args": [],
+      "initCommands": [
+        // 核心修正1：用&显式执行脚本（PowerShell安全要求）
+        // 核心修正2：使用绝对路径（避免相对路径解析失败）
+        "& 'E:\\Files\\PycharmProjects\\storage\\.venv\\Scripts\\Activate.ps1'"
+      ]
+    }
+  }
+}

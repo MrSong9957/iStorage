@@ -1,0 +1,492 @@
+{% extends 'base_template.html' %}
+{% load static %}
+
+{% block title %}{% block find_title %}找物品 - iStorage{% endblock %}{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    {% block find_extra_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="find-layout">
+    <!-- 侧边栏 -->
+    <!-- 使用统一的侧边栏模板片段 -->
+    {% include 'items/sidebar.html' %}
+    
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 顶部区域：统计卡片和搜索区 -->
+        <div class="top-section">
+            <!-- 顶部统计卡片 -->
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-label">物品总数</div>
+                    <div class="stat-number" id="total-items-number">{{ total_items }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label" id="first-stat-label">
+                        {% if filter_type == 'room' %}房间数{% else %}分类数{% endif %}
+                    </div>
+                    <div class="stat-number" id="first-stat-number">
+                        {% if filter_type == 'room' %}{{ room_count }}{% else %}{{ category_count }}{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 标题区域 -->
+        <div class="section-header">
+            <h3 class="section-title">{% block section_title %}{% if search_query %}搜索结果{% else %}物品列表{% endif %}{% endblock %}</h3>
+        </div>
+        
+        <!-- 数据展示区域 -->
+        <div class="items-section">
+            {% block items_content %}
+            {% if items %}
+                {% for group_name, group_items in grouped_items.items %}
+                    <div class="items-group">
+                        <div class="group-header">
+                            <a href="#" class="group-title-link" data-group="{{ group_name|slugify }}">{{ group_name }}</a>
+                            <span class="group-count">{{ group_items|length }}件</span>
+                        </div>
+                        <div class="items-grid" id="grid-{{ group_name|slugify }}">
+                            {% for item in group_items %}
+                                <div class="item-card" data-item-id="{{ item.id }}" data-item-name="{{ item.name|escapejs }}">
+                                    <div class="item-card-header">
+                                        <h4 class="item-name">{{ item.name|default:"未命名物品" }}</h4>
+                                    </div>
+                                    <div class="item-card-content">
+                                        <div class="item-meta">
+                                            <div class="meta-item">
+                                                <span class="meta-label">房间:</span>
+                                                <span class="meta-value">{{ item.location|default:"未指定" }}</span>
+                                            </div>
+                                            <div class="meta-item">
+                                                <span class="meta-label">分类:</span>
+                                                <span class="meta-value">{{ item.category|default:"—" }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        {% if search_query %}
+                            🔍
+                        {% else %}
+                            📦
+                        {% endif %}
+                    </div>
+                    <p class="empty-text">
+                        {% if search_query %}
+                            没有找到匹配的物品
+                        {% else %}
+                            暂无存放记录
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+            {% endblock %}
+        </div>
+    </main>
+</div>
+
+<!-- 添加分类/房间模态框 -->
+<div class="modal" id="add-modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title">添加房间</h3>
+            <button class="modal-close" id="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="add-form">
+                <input type="hidden" id="modal-type" name="type" value="room">
+                <div class="form-group">
+                    <label for="modal-name" class="form-label">名称</label>
+                    <input type="text" id="modal-name" name="name" class="form-input" placeholder="请输入名称" required>
+                </div>
+                <!-- 推荐列表 -->
+                <div class="recommendations">
+                    <h4 class="recommendations-title">推荐</h4>
+                    <div class="recommendations-list" id="recommendations-list">
+                        <!-- 推荐内容将通过JavaScript动态加载 -->
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel-btn" id="modal-cancel">取消</button>
+            <button class="modal-btn confirm-btn" id="modal-confirm">添加</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    // 推荐数据
+    const recommendedData = {
+        rooms: {{ recommended_rooms|safe }},
+        categories: {{ recommended_categories|safe }}
+    };
+
+    // Helper functions
+    function getCookie(name) {
+        const match = document.cookie.match(`(^|;) ?${name}=([^;]*)(;|$)`);
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    // 显示模态框
+    function showModal(type) {
+        const modal = document.getElementById('add-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalType = document.getElementById('modal-type');
+        const recommendationsList = document.getElementById('recommendations-list');
+        const modalName = document.getElementById('modal-name');
+        
+        // 设置模态框标题和类型
+        if (type === 'room') {
+            modalTitle.textContent = '添加房间';
+            modalType.value = 'room';
+            // 加载房间推荐
+            renderRecommendations(recommendationsList, recommendedData.rooms);
+        } else {
+            modalTitle.textContent = '添加分类';
+            modalType.value = 'category';
+            // 加载分类推荐
+            renderRecommendations(recommendationsList, recommendedData.categories);
+        }
+        
+        // 清空输入框
+        modalName.value = '';
+        
+        // 显示模态框 - 改为flex以保持居中
+        modal.style.display = 'flex';
+        
+        // 阻止背景滚动
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 隐藏模态框
+    function hideModal() {
+        const modal = document.getElementById('add-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // 渲染推荐列表
+    function renderRecommendations(container, recommendations) {
+        container.innerHTML = '';
+        if (recommendations.length === 0) {
+            container.innerHTML = '<div class="no-recommendations">暂无推荐</div>';
+            return;
+        }
+        
+        recommendations.forEach(item => {
+            const recommendationItem = document.createElement('div');
+            recommendationItem.className = 'recommendation-item';
+            recommendationItem.dataset.value = item;
+            recommendationItem.textContent = item;
+            recommendationItem.addEventListener('click', () => {
+                document.getElementById('modal-name').value = item;
+            });
+            container.appendChild(recommendationItem);
+        });
+    }
+
+    // 提交添加表单
+    function submitAddForm() {
+        const form = document.getElementById('add-form');
+        const type = document.getElementById('modal-type').value;
+        const name = document.getElementById('modal-name').value.trim();
+        
+        if (!name) {
+            alert('请输入名称');
+            return;
+        }
+        
+        // 发送请求
+        const url = type === 'room' ? '{% url 'items:add_room' %}' : '{% url 'items:add_category' %}';
+        fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: new URLSearchParams({
+                name: name
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 刷新页面
+                window.location.reload();
+            } else {
+                alert('添加失败: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('添加失败:', error);
+            alert('添加失败: 网络错误');
+        });
+    }
+
+    // Modal handling for items
+    function showItemModal(html, itemId) {
+        let container = document.getElementById('modal-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'modal-container';
+            document.body.appendChild(container);
+        }
+        container.innerHTML = html;
+        
+        // 存储物品ID到容器中，方便后续使用
+        container.dataset.itemId = itemId;
+        
+        // 绑定模态框关闭事件
+        bindItemModalEvents(container);
+        
+        // 阻止背景滚动
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeItemModal() {
+        const container = document.getElementById('modal-container');
+        if (container) container.innerHTML = '';
+        document.body.style.overflow = 'auto';
+    }
+
+    function bindItemModalEvents(container) {
+        // 关闭按钮事件
+        container.querySelectorAll('[data-close-modal]').forEach(el => {
+            el.addEventListener('click', closeItemModal);
+        });
+        
+        // 点击模态框外部关闭
+        container.addEventListener('click', (e) => {
+            if (e.target === container) {
+                closeItemModal();
+            }
+        });
+        
+        // 保存按钮事件
+        const saveBtn = container.getElementById('save-item-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                // 从容器dataset中获取物品ID
+                const itemId = container.dataset.itemId;
+                saveItem(itemId);
+            });
+        }
+        
+        // 删除按钮事件
+        const deleteBtn = container.getElementById('delete-item-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                // 从容器dataset中获取物品ID
+                const itemId = container.dataset.itemId;
+                deleteItem(itemId);
+            });
+        }
+    }
+
+    // 保存物品
+    function saveItem(itemId) {
+        const form = document.getElementById('item-form');
+        const formData = new FormData(form);
+        
+        fetch(`{% url 'items:item_detail' 0 %}`.replace('/0/', `/${itemId}/`), {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 刷新页面
+                window.location.reload();
+            } else {
+                alert('保存失败: ' + (data.error || '未知错误'));
+            }
+        })
+        .catch(error => {
+            console.error('保存失败:', error);
+            alert('保存失败: 网络错误');
+        });
+    }
+
+    // 删除物品
+    function deleteItem(itemId) {
+        if (confirm('确定要删除这个物品吗？')) {
+            fetch(`{% url 'items:delete_item' 0 %}`.replace('/0/', `/${itemId}/`), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 刷新页面
+                    window.location.reload();
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('删除失败:', error);
+                alert('删除失败: 网络错误');
+            });
+        }
+    }
+
+    // Fetch modal content for an item
+    function openItemModal(id) {
+        fetch(`{% url 'items:item_detail' 0 %}`.replace('/0/', `/${id}/`) + '?modal=1', {
+            credentials: 'same-origin'
+        })
+        .then(response => response.text())
+        .then(html => {
+            showItemModal(html, id);
+        })
+        .catch(error => {
+            console.error('Failed to load modal:', error);
+        });
+    }
+
+    // 更新筛选状态
+    function updateFilter(filterType) {
+        // 更新导航激活状态
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-filter="${filterType}"]`).classList.add('active');
+        
+        // 更新统计卡片
+        const firstStatLabel = document.getElementById('first-stat-label');
+        const firstStatNumber = document.getElementById('first-stat-number');
+        
+        if (filterType === 'room') {
+            firstStatLabel.textContent = '房间数';
+            firstStatNumber.textContent = '{{ room_count }}';
+        } else {
+            firstStatLabel.textContent = '分类数';
+            firstStatNumber.textContent = '{{ category_count }}';
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        // 获取当前筛选类型
+        const currentFilter = new URLSearchParams(window.location.search).get('filter') || 'room';
+        
+        // 更新筛选状态
+        updateFilter(currentFilter);
+        
+        // Card click handling
+        document.querySelectorAll('[data-item-id]').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = card.getAttribute('data-item-id');
+                openItemModal(id);
+            });
+        });
+        
+        // 导航链接点击事件
+        document.querySelectorAll('.nav-item[data-filter]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const filterType = item.getAttribute('data-filter');
+                const link = item.querySelector('a');
+                window.location.href = link.getAttribute('href');
+            });
+        });
+        
+        // 添加按钮点击事件
+        document.getElementById('add-item-btn').addEventListener('click', (e) => {
+            const type = e.target.closest('.add-btn').getAttribute('data-type');
+            showModal(type);
+        });
+        
+        // 模态框关闭事件
+        document.getElementById('modal-close').addEventListener('click', hideModal);
+        document.getElementById('modal-cancel').addEventListener('click', hideModal);
+        
+        // 模态框提交事件
+        document.getElementById('modal-confirm').addEventListener('click', submitAddForm);
+        
+        // 点击模态框外部关闭
+        document.getElementById('add-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'add-modal') {
+                hideModal();
+            }
+        });
+        
+        // 分类标题点击展开/折叠功能
+        document.querySelectorAll('.group-title-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                const group = link.dataset.group;
+                const grid = document.getElementById(`grid-${group}`);
+                
+                // 切换显示/隐藏状态
+                if (grid.style.display === 'none') {
+                    grid.style.display = 'grid';
+                    link.style.fontWeight = '600';
+                } else {
+                    grid.style.display = 'none';
+                    link.style.fontWeight = '500';
+                }
+            });
+        });
+        
+        // 分类标签点击切换功能
+        document.querySelectorAll('.tag-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                const tagItem = link.closest('.tag-item');
+                const tag = tagItem.dataset.tag;
+                
+                // 更新标签激活状态
+                document.querySelectorAll('.tag-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                tagItem.classList.add('active');
+                
+                // 筛选物品组
+                const allGroups = document.querySelectorAll('.items-group');
+                
+                if (tag === 'all') {
+                    // 显示所有物品组
+                    allGroups.forEach(group => {
+                        group.style.display = 'block';
+                    });
+                } else {
+                    // 隐藏所有物品组，然后显示匹配的物品组
+                    allGroups.forEach(group => {
+                        const groupTitle = group.querySelector('.group-title-link');
+                        if (groupTitle && groupTitle.dataset.group === tag) {
+                            group.style.display = 'block';
+                        } else {
+                            group.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}

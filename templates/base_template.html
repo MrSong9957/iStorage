@@ -28,6 +28,14 @@
             border-color: #007AFF;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
         }
+        /* Minimal unified card style for item list cards (scoped via .is-card) */
+        .is-card {
+            min-height: 72px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding: 1rem;
+        }
         .dropdown-menu {
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.05);
@@ -50,7 +58,7 @@
 
     {% block extra_css %}{% endblock %}
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-6">
+<body class="min-h-screen flex flex-col items-start justify-start pt-20 p-6">
 
     <nav class="fixed top-0 w-full h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
         <div class="w-full max-w-4xl mx-auto flex justify-between items-center px-6 h-full">
@@ -58,8 +66,8 @@
                 <div class="w-6 h-6 bg-black rounded-md"></div> <span class="font-semibold text-gray-900 text-lg">iStorage</span>
             </a>
             
-            <!-- 搜索框 - 只在找物品页面显示 -->
-            {% if request.resolver_match.url_name == 'find_items' %}
+            <!-- 搜索框 - 在相关页面显示 -->
+            {% if request.resolver_match.url_name == 'find_items' or request.resolver_match.url_name == 'manage_categories' %}
                 <div class="flex-1 mx-4 hidden md:block">
                     <form method="GET" action="{% url 'items:find_items' %}" class="flex gap-2">
                         <input type="text" name="q" placeholder="搜索物品名称、编号、位置..." 
@@ -121,6 +129,47 @@
         {% block content %}<!-- 页面内容将在这里显示 -->{% endblock %}
     </div>
 
+    <!-- 导航项管理模态框 -->
+    <div id="nav-modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="nav-modal-title">添加子标签</h3>
+                <button class="modal-close" onclick="hideNavModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="nav-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="nav_id" id="nav-id">
+                    <input type="hidden" name="parent_id" id="parent-id">
+                    <input type="hidden" name="action" id="nav-action" value="add">
+                    
+                    <div class="form-group">
+                        <label for="nav-name" class="form-label">名称</label>
+                        <input type="text" id="nav-name" name="name" class="form-input" placeholder="请输入名称" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="nav-url" class="form-label">链接</label>
+                        <input type="text" id="nav-url" name="url" class="form-input" placeholder="请输入链接" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="nav-icon" class="form-label">图标</label>
+                        <input type="text" id="nav-icon" name="icon" class="form-input" placeholder="请输入图标，如：🔍" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel-btn" onclick="hideNavModal()">取消</button>
+                <button class="modal-btn confirm-btn" onclick="submitNavForm()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入自定义JavaScript -->
+    <script src="{% static 'js/custom.js' %}"></script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>
