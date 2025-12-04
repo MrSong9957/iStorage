@@ -8,7 +8,6 @@
 ```
 storage/
 ├── .git/                  # Git 版本控制目录
-├── .spec-workflow/        # 规范工作流目录
 ├── .trae/                 # Trae AI 相关目录
 ├── .venv/                 # Python 虚拟环境
 ├── apps/                  # Django 应用目录
