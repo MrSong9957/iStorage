@@ -69,7 +69,7 @@ function submitNavForm() {
     const action = document.getElementById('nav-action').value;
     
     // 发送请求
-    fetch('{% url 'items:manage_navigation' %}', {
+    fetch(window.config.urls.manageNavigation, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -101,7 +101,7 @@ function deleteNavItem(id) {
         formData.append('nav_id', id);
         
         // 发送请求
-        fetch('{% url 'items:manage_navigation' %}', {
+        fetch(window.config.urls.manageNavigation, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {

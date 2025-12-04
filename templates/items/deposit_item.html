@@ -19,7 +19,7 @@
             {% endif %}
             
             <!-- 表单 -->
-            <form id="depositForm" method="post" action="{% url 'items:deposit_item' %}" enctype="multipart/form-data">
+            <form id="depositForm" method="post" action="" enctype="multipart/form-data"> <!-- 使用空字符串action，表单将提交到当前URL -->
                 {% csrf_token %}
                 
                 <!-- 物品名称 -->

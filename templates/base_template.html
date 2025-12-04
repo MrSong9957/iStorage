@@ -167,6 +167,16 @@
         </div>
     </div>
 
+    <!-- 全局变量配置 -->
+    <script>
+        // 全局配置变量
+        window.config = {
+            urls: {
+                manageNavigation: "{% url 'items:manage_navigation' %}"
+            }
+        };
+    </script>
+    
     <!-- 引入自定义JavaScript -->
     <script src="{% static 'js/custom.js' %}"></script>
     

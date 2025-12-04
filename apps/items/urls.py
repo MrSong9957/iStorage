@@ -20,5 +20,6 @@ urlpatterns = [
     path('add_room/', views.add_room, name='add_room'),  # 添加新房间API
     path('manage/', views.manage_categories, name='manage_categories'),  # 管理分类和房间
     path('manage_nav/', views.manage_navigation, name='manage_navigation'),  # 管理导航项API
+    path('api/get_items_by_category/', views.get_items_by_category, name='get_items_by_category'),  # 根据分类获取物品API
 
 ]

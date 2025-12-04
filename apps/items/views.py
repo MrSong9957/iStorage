@@ -35,7 +35,7 @@ class ItemCreateView(CreateView):
     """物品创建视图（基于类）"""
     model = Item
     form_class = ItemForm
-    template_name = 'items/item_create.html'
+    template_name = 'items/deposit_item.html'  # 使用现有的deposit_item.html模板，避免创建新文件
     success_url = reverse_lazy('items:success')
 
     def form_valid(self, form):
@@ -87,9 +87,23 @@ def find_items(request):
     """查找物品页面视图"""
     # 处理筛选条件
     filter_type = request.GET.get('filter', 'room')
+    # 获取分类筛选参数
+    category_filter = request.GET.get('category', None)
     
     # 获取用户的物品
     items = Item.objects.filter(user=request.user).select_related('category')
+    
+    # 应用分类筛选
+    if category_filter:
+        if filter_type == 'room':
+            # 按房间筛选
+            items = items.filter(location=category_filter)
+        else:
+            # 按分类筛选
+            if category_filter == '未分类':
+                items = items.filter(category__isnull=True)
+            else:
+                items = items.filter(category__name=category_filter)
     
     # 按房间或分类分组
     grouped_items = defaultdict(list)
@@ -165,6 +179,7 @@ def find_items(request):
         'category_count': category_count,
         'room_count': room_count,
         'filter_type': filter_type,
+        'category_filter': category_filter,
         'recommended_rooms': recommendations['rooms'],
         'recommended_categories': recommendations['categories'],
         'all_categories': categories,
@@ -256,6 +271,49 @@ def update_item_location(request, item_id):
         item.save()
         return JsonResponse({'success': True, 'location': new_location})
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+
+@login_required
+def get_items_by_category(request):
+    """根据分类获取物品API"""
+    # 获取分类参数
+    category = request.GET.get('category', '')
+    # 获取过滤类型
+    filter_type = request.GET.get('filter_type', 'room')
+    
+    # 参数校验
+    if not category:
+        return JsonResponse({'success': False, 'error': '分类参数不能为空'})
+    
+    try:
+        # 根据过滤类型和分类参数查询数据
+        if filter_type == 'room':
+            # 按房间查询
+            items = Item.objects.filter(user=request.user, location=category).select_related('category')
+        else:
+            # 按分类查询
+            items = Item.objects.filter(user=request.user, category__name=category).select_related('category')
+        
+        # 构建返回数据
+        item_list = []
+        for item in items:
+            item_list.append({
+                'id': item.id,
+                'name': item.name,
+                'location': item.location,
+                'category': item.category.name if item.category else '未分类',
+                'item_code': item.item_code,
+                'image': item.image.url if item.image else None
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'data': item_list,
+            'category': category,
+            'count': len(item_list)
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 
 @login_required

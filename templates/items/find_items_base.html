@@ -9,6 +9,10 @@
 {% endblock %}
 
 {% block content %}
+<!-- 推荐数据 - 使用json_script存储 -->
+{{ recommended_rooms|json_script:"recommended-rooms" }}
+{{ recommended_categories|json_script:"recommended-categories" }}
+
 <div class="find-layout">
     <!-- 侧边栏 -->
     <!-- 使用统一的侧边栏模板片段 -->
@@ -52,7 +56,7 @@
                         </div>
                         <div class="items-grid" id="grid-{{ group_name|slugify }}">
                             {% for item in group_items %}
-                                <div class="item-card" data-item-id="{{ item.id }}" data-item-name="{{ item.name|escapejs }}">
+                                <div class="item-card" data-item-id="{{ item.id }}" data-item-name="{{ item.name|escapejs }}" data-room="{{ item.location|slugify }}" data-category="{{ item.category.name|default:'未分类'|slugify }}">
                                     <div class="item-card-header">
                                         <h4 class="item-name">{{ item.name|default:"未命名物品" }}</h4>
                                     </div>
@@ -126,15 +130,51 @@
         </div>
     </div>
 </div>
+
+<!-- 导航模态框 - 用于新建子标签 -->
+<div class="modal" id="nav-modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">新建子标签</h3>
+            <button class="modal-close" id="nav-modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="nav-form">
+                <input type="hidden" name="action" value="add">
+                <input type="hidden" name="parent_id" value="">
+                <div class="form-group">
+                    <label for="nav-name" class="form-label">名称</label>
+                    <input type="text" id="nav-name" name="name" class="form-input" placeholder="请输入子标签名称" required>
+                </div>
+                <div class="form-group">
+                    <label for="nav-icon" class="form-label">图标</label>
+                    <input type="text" id="nav-icon" name="icon" class="form-input" placeholder="请输入图标（如📦）" required>
+                </div>
+                <div class="form-group">
+                    <label for="nav-url" class="form-label">URL</label>
+                    <input type="text" id="nav-url" name="url" class="form-input" placeholder="请输入URL路径（如/items/find/）" required>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel-btn" id="nav-modal-cancel">取消</button>
+            <button class="modal-btn confirm-btn" id="nav-modal-save" type="submit" form="nav-form">保存</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (function() {
     // 推荐数据
+    const recommendedRooms = JSON.parse(document.getElementById('recommended-rooms').textContent);
+    const recommendedCategories = JSON.parse(document.getElementById('recommended-categories').textContent);
+    
     const recommendedData = {
-        rooms: {{ recommended_rooms|safe }},
-        categories: {{ recommended_categories|safe }}
+        rooms: recommendedRooms,
+        categories: recommendedCategories
     };
 
     // Helper functions
@@ -213,7 +253,7 @@
         }
         
         // 发送请求
-        const url = type === 'room' ? '{% url 'items:add_room' %}' : '{% url 'items:add_category' %}';
+        const url = type === 'room' ? "{% url 'items:add_room' %}" : "{% url 'items:add_category' %}";
         fetch(url, {
             method: 'POST',
             credentials: 'same-origin',
@@ -386,6 +426,48 @@
         }
     }
 
+    // 导航模态框功能
+    // 显示导航模态框
+    function showNavModal() {
+        const modal = document.getElementById('nav-modal');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // 隐藏导航模态框
+    function hideNavModal() {
+        const modal = document.getElementById('nav-modal');
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    
+    // 处理导航表单提交
+    function handleNavFormSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        fetch("{% url 'items:manage_navigation' %}", {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        }).then(response => response.json())
+          .then(data => {
+            if (data.success) {
+                // 隐藏模态框
+                hideNavModal();
+                // 刷新页面以显示新添加的子标签
+                window.location.reload();
+            } else {
+                alert('添加失败: ' + (data.error || '未知错误'));
+            }
+        }).catch(error => {
+            console.error('添加失败:', error);
+            alert('添加失败: 网络错误');
+        });
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
         // 获取当前筛选类型
@@ -402,8 +484,8 @@
             });
         });
         
-        // 导航链接点击事件
-        document.querySelectorAll('.nav-item[data-filter]').forEach(item => {
+        // 导航链接点击事件 - 为所有导航项添加相同的交互效果
+        document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
                 const filterType = item.getAttribute('data-filter');
@@ -411,11 +493,28 @@
                 window.location.href = link.getAttribute('href');
             });
         });
-        
+    
         // 添加按钮点击事件
         document.getElementById('add-item-btn').addEventListener('click', (e) => {
             const type = e.target.closest('.add-btn').getAttribute('data-type');
             showModal(type);
+        });
+    
+        // 绑定导航模态框事件
+        document.getElementById('nav-modal-close').addEventListener('click', hideNavModal);
+        document.getElementById('nav-modal-cancel').addEventListener('click', hideNavModal);
+    
+        // 表单提交事件
+        const navForm = document.getElementById('nav-form');
+        if (navForm) {
+            navForm.addEventListener('submit', handleNavFormSubmit);
+        }
+    
+        // 点击模态框外部关闭
+        document.getElementById('nav-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'nav-modal') {
+                hideNavModal();
+            }
         });
         
         // 模态框关闭事件
@@ -447,42 +546,6 @@
                 } else {
                     grid.style.display = 'none';
                     link.style.fontWeight = '500';
-                }
-            });
-        });
-        
-        // 分类标签点击切换功能
-        document.querySelectorAll('.tag-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                
-                const tagItem = link.closest('.tag-item');
-                const tag = tagItem.dataset.tag;
-                
-                // 更新标签激活状态
-                document.querySelectorAll('.tag-item').forEach(item => {
-                    item.classList.remove('active');
-                });
-                tagItem.classList.add('active');
-                
-                // 筛选物品组
-                const allGroups = document.querySelectorAll('.items-group');
-                
-                if (tag === 'all') {
-                    // 显示所有物品组
-                    allGroups.forEach(group => {
-                        group.style.display = 'block';
-                    });
-                } else {
-                    // 隐藏所有物品组，然后显示匹配的物品组
-                    allGroups.forEach(group => {
-                        const groupTitle = group.querySelector('.group-title-link');
-                        if (groupTitle && groupTitle.dataset.group === tag) {
-                            group.style.display = 'block';
-                        } else {
-                            group.style.display = 'none';
-                        }
-                    });
                 }
             });
         });
